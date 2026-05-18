@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { RadarChart, visibleProjects, type PlacedProject } from "@/components/RadarChart";
-import { CATEGORIES, STAGES, getCategoryLabel, type Category } from "@/data/projects";
+import { RadarChart, type PlacedProject } from "@/components/RadarChart";
+import { CATEGORIES, STAGES, visibleProjects, getCategoryLabel, type Category } from "@/data/projects";
 
 function StagesBadge({ stage }: { stage: string }) {
   const stageInfo = STAGES.find((s) => s.key === stage);

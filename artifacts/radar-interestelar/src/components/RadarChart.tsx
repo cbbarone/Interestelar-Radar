@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import {
-  projects,
+  visibleProjects,
   CATEGORIES,
   STAGES,
   getCategoryColor,
@@ -8,12 +8,6 @@ import {
   type Project,
   type Category,
 } from "@/data/projects";
-
-// ─── Projects filter: exclude Identificado (ring 6) and Cancelado (ring 7) ──
-const IGNORED_RINGS = new Set([6, 7]);
-export const visibleProjects = projects.filter(
-  (p) => !IGNORED_RINGS.has(getStageRing(p.stage))
-);
 
 // ─── Inner radar constants ───────────────────────────────────────────────────
 const NUM_RINGS = 6; // only rings 0–5 after filtering
@@ -128,12 +122,14 @@ function placeProjects(outerSectors: OuterSector[]): PlacedProject[] {
     const ring = parseInt(ringStr);
     const n = ps.length;
 
-    const startAngle = START_OFFSET + catIdx * SECTOR_ANGLE;
-    const endAngle = startAngle + SECTOR_ANGLE;
+    const sector = outerSectors[catIdx];
+    const startAngle = sector.startAngle;
+    const endAngle = sector.endAngle;
+    const sectorSpan = endAngle - startAngle;
     const innerR = ring === 0 ? MIN_R * 0.25 : ringRadius(ring - 1) + DOT_R + 3;
     const outerR = ringRadius(ring) - DOT_R - 3;
     const radialExtent = Math.max(1, outerR - innerR);
-    const angMargin = SECTOR_ANGLE * ANG_MARGIN_FRAC;
+    const angMargin = sectorSpan * ANG_MARGIN_FRAC;
     const minAngle = startAngle + angMargin;
     const maxAngle = endAngle - angMargin;
     const angExtent = maxAngle - minAngle;
@@ -350,17 +346,16 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
         {/* Inner radar background */}
         <circle cx={CX} cy={CY} r={MAX_R + 4} fill="url(#bg-gradient)" />
 
-        {/* ── Inner sector fills ── */}
-        {CATEGORIES.map((cat, i) => {
-          const startAngle = START_OFFSET + i * SECTOR_ANGLE;
-          const endAngle = startAngle + SECTOR_ANGLE;
+        {/* ── Inner sector fills (same proportional angles as outer ring) ── */}
+        {outerSectors.map((sector, i) => {
+          const cat = CATEGORIES[i];
           const isActive = activeCategories.has(cat.key);
           const isHighlighted =
             highlightBucket !== null && highlightBucket.catIdx === i;
           return (
             <path
               key={cat.key}
-              d={sectorPath(startAngle, endAngle, 0, MAX_R + 4)}
+              d={sectorPath(sector.startAngle, sector.endAngle, 0, MAX_R + 4)}
               fill={isActive ? cat.color : "#444"}
               fillOpacity={isHighlighted ? 0.14 : isActive ? 0.065 : 0.018}
               clipPath="url(#radar-clip)"
@@ -385,11 +380,10 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
           />
         ))}
 
-        {/* ── Inner sector dividers ── */}
-        {CATEGORIES.map((_, i) => {
-          const angle = START_OFFSET + i * SECTOR_ANGLE;
-          const inner = polarToXY(angle, 0);
-          const outer = polarToXY(angle, MAX_R + 4);
+        {/* ── Inner sector dividers (aligned with proportional outer ring) ── */}
+        {outerSectors.map((sector, i) => {
+          const inner = polarToXY(sector.startAngle, 0);
+          const outer = polarToXY(sector.startAngle, MAX_R + 4);
           return (
             <line
               key={i}
@@ -397,7 +391,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
               y1={inner.y}
               x2={outer.x}
               y2={outer.y}
-              stroke="rgba(120,160,255,0.14)"
+              stroke="rgba(120,160,255,0.18)"
               strokeWidth="1"
               style={{ pointerEvents: "none" }}
             />

@@ -929,3 +929,9 @@ export function getCategoryLabel(category: Category): string {
   const found = CATEGORIES.find((c) => c.key === category);
   return found ? found.label : category;
 }
+
+// Projects with ring 6 (Identificado/Aberto) and ring 7 (Cancelado) excluded
+const IGNORED_RINGS = new Set([6, 7]);
+export const visibleProjects = projects.filter(
+  (p) => !IGNORED_RINGS.has(getStageRing(p.stage))
+);

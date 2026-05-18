@@ -161,14 +161,24 @@ function placeProjects(outerSectors: OuterSector[]): PlacedProject[] {
     });
   });
 
-  // ── Outer ring: radially aligned with the inner dot ─────────────────────
-  // Each outer dot sits at the same angle as its inner dot, just at OUTER_R.
+  // ── Outer ring: evenly spaced within each proportional sector ────────────
+  // Projects are distributed uniformly along the arc so outer dots never overlap.
   const outerMap = new Map<string, { outerX: number; outerY: number; outerAngle: number }>();
 
-  for (const [id, inner] of innerMap) {
-    const angle = Math.atan2(inner.py - CY, inner.px - CX);
-    const { x, y } = polarToXY(angle, OUTER_R);
-    outerMap.set(id, { outerX: x, outerY: y, outerAngle: angle });
+  for (const sector of outerSectors) {
+    const sectorProjects = visibleProjects.filter((p) => p.category === sector.catKey);
+    const n = sectorProjects.length;
+    const span = sector.endAngle - sector.startAngle;
+
+    sectorProjects.forEach((p, i) => {
+      const margin = n > 1 ? span * 0.02 : 0;
+      const angle =
+        n === 1
+          ? sector.startAngle + span / 2
+          : sector.startAngle + margin + (i / (n - 1)) * (span - margin * 2);
+      const { x, y } = polarToXY(angle, OUTER_R);
+      outerMap.set(p.id, { outerX: x, outerY: y, outerAngle: angle });
+    });
   }
 
   // ── Combine ──────────────────────────────────────────────────────────────

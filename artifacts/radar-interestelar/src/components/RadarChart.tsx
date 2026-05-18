@@ -9,29 +9,33 @@ import {
   type Category,
 } from "@/data/projects";
 
+// ─── Inner radar constants ───────────────────────────────────────────────────
 const NUM_RINGS = 8;
-const RADAR_SIZE = 960;
-const CX = RADAR_SIZE / 2;
-const CY = RADAR_SIZE / 2;
+const RADAR_SIZE = 1100;
+const CX = RADAR_SIZE / 2;         // 550
+const CY = RADAR_SIZE / 2;         // 550
 const MIN_R = 52;
-const MAX_R = 440;
+const MAX_R = 420;
 const RING_STEP = (MAX_R - MIN_R) / (NUM_RINGS - 1);
 const DOT_R = 5;
-const MIN_SPACING = DOT_R * 2 + 3; // 13px center-to-center
+const MIN_SPACING = DOT_R * 2 + 3; // 13px
+const ANG_MARGIN_FRAC = 0.07;
+
+// ─── Outer proportional ring constants ──────────────────────────────────────
+const OUTER_R = 490;               // radius of the outer dot ring
+const OUTER_TICK_R = OUTER_R + 18; // label placement radius
+const START_OFFSET = -Math.PI / 2;
+const NUM_CATEGORIES = CATEGORIES.length;
+const SECTOR_ANGLE = (2 * Math.PI) / NUM_CATEGORIES;
 
 function ringRadius(ring: number): number {
   return MIN_R + ring * RING_STEP;
 }
 
-const NUM_CATEGORIES = CATEGORIES.length;
-const SECTOR_ANGLE = (2 * Math.PI) / NUM_CATEGORIES;
-const START_OFFSET = -Math.PI / 2;
-const ANG_MARGIN_FRAC = 0.07;
-
-function polarToXY(angle: number, radius: number) {
+function polarToXY(angle: number, radius: number, cx = CX, cy = CY) {
   return {
-    x: CX + radius * Math.cos(angle),
-    y: CY + radius * Math.sin(angle),
+    x: cx + radius * Math.cos(angle),
+    y: cy + radius * Math.sin(angle),
   };
 }
 
@@ -56,14 +60,50 @@ function sectorPath(
   ].join(" ");
 }
 
+// ─── Outer ring proportional layout ──────────────────────────────────────────
+interface OuterSector {
+  catKey: string;
+  color: string;
+  label: string;
+  startAngle: number;
+  endAngle: number;
+  count: number;
+}
+
+function computeOuterSectors(): OuterSector[] {
+  const total = projects.length;
+  const sectors: OuterSector[] = [];
+  let cursor = START_OFFSET;
+
+  for (const cat of CATEGORIES) {
+    const count = projects.filter((p) => p.category === cat.key).length;
+    const span = (count / total) * 2 * Math.PI;
+    sectors.push({
+      catKey: cat.key,
+      color: cat.color,
+      label: cat.label,
+      startAngle: cursor,
+      endAngle: cursor + span,
+      count,
+    });
+    cursor += span;
+  }
+  return sectors;
+}
+
+// ─── Placement ───────────────────────────────────────────────────────────────
 export interface PlacedProject extends Project {
   px: number;
   py: number;
   ring: number;
   sectorIndex: number;
+  outerX: number;
+  outerY: number;
+  outerAngle: number;
 }
 
-function placeProjects(): PlacedProject[] {
+function placeProjects(outerSectors: OuterSector[]): PlacedProject[] {
+  // ── Inner radar: bucket grid placement ──────────────────────────────────
   const buckets: Map<string, Project[]> = new Map();
   for (const p of projects) {
     const ring = getStageRing(p.stage);
@@ -74,7 +114,7 @@ function placeProjects(): PlacedProject[] {
     buckets.get(key)!.push(p);
   }
 
-  const placed: PlacedProject[] = [];
+  const innerMap = new Map<string, { px: number; py: number; ring: number; sectorIndex: number }>();
 
   buckets.forEach((ps, key) => {
     const [catIdxStr, ringStr] = key.split("-");
@@ -84,69 +124,74 @@ function placeProjects(): PlacedProject[] {
 
     const startAngle = START_OFFSET + catIdx * SECTOR_ANGLE;
     const endAngle = startAngle + SECTOR_ANGLE;
-
-    // Radial bounds with padding
     const innerR = ring === 0 ? MIN_R * 0.25 : ringRadius(ring - 1) + DOT_R + 3;
     const outerR = ringRadius(ring) - DOT_R - 3;
     const radialExtent = Math.max(1, outerR - innerR);
-
-    // Angular bounds with margin
     const angMargin = SECTOR_ANGLE * ANG_MARGIN_FRAC;
     const minAngle = startAngle + angMargin;
     const maxAngle = endAngle - angMargin;
     const angExtent = maxAngle - minAngle;
-
-    // Mid-radius arc length determines how many columns fit
     const midR = (innerR + outerR) / 2;
     const arcLen = midR * angExtent;
 
-    // Compute grid dimensions: maximize columns (angular) first
     const maxCols = Math.max(1, Math.floor(arcLen / MIN_SPACING));
     const maxRows = Math.max(1, Math.floor(radialExtent / MIN_SPACING));
-
-    // Choose cols to be at most maxCols and at least ceil(n/maxRows)
-    let cols = Math.min(maxCols, Math.max(1, Math.ceil(n / maxRows)));
-    // Adjust: try to make the grid as square-ish as possible
     const idealCols = Math.ceil(Math.sqrt(n * (arcLen / Math.max(1, radialExtent))));
-    cols = Math.min(maxCols, Math.max(cols, Math.min(idealCols, n)));
-
+    let cols = Math.min(maxCols, Math.max(1, Math.min(idealCols, n)));
     let rows = Math.ceil(n / cols);
-
-    // If rows exceed maxRows, we need more cols to compress vertically
     if (rows > maxRows) {
       rows = maxRows;
       cols = Math.ceil(n / rows);
-      // cols might exceed maxCols — scale down MIN_SPACING gracefully
     }
 
-    // Compute actual spacing used
     const actualAngSpacing = cols > 1 ? angExtent / (cols - 1) : 0;
-    const actualRadSpacing = rows > 1 ? radialExtent / (rows - 1) : 0;
 
     ps.forEach((p, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
-
       const tA = cols > 1 ? col / (cols - 1) : 0.5;
       const tR = rows > 1 ? row / (rows - 1) : 0.5;
-
-      // Alternate row offset (brick pattern) so dots don't stack perfectly
       const brickOffset = row % 2 === 0 ? 0 : actualAngSpacing * 0.5;
-      const angle = minAngle + tA * angExtent + brickOffset;
-      const r = innerR + tR * radialExtent;
-
-      // Clamp to bounds
-      const clampedAngle = Math.max(minAngle, Math.min(maxAngle, angle));
-      const clampedR = Math.max(innerR, Math.min(outerR, r));
-
-      const { x, y } = polarToXY(clampedAngle, clampedR);
-      placed.push({ ...p, px: x, py: y, ring, sectorIndex: catIdx });
+      const angle = Math.max(minAngle, Math.min(maxAngle, minAngle + tA * angExtent + brickOffset));
+      const r = Math.max(innerR, Math.min(outerR, innerR + tR * radialExtent));
+      const { x, y } = polarToXY(angle, r);
+      innerMap.set(p.id, { px: x, py: y, ring, sectorIndex: catIdx });
     });
   });
 
+  // ── Outer ring: proportional, one dot per project evenly spaced ─────────
+  const outerMap = new Map<string, { outerX: number; outerY: number; outerAngle: number }>();
+
+  for (const sector of outerSectors) {
+    const sectorProjects = projects.filter((p) => p.category === sector.catKey);
+    const n = sectorProjects.length;
+    const span = sector.endAngle - sector.startAngle;
+
+    sectorProjects.forEach((p, i) => {
+      // Evenly space within the sector arc; add small margin so first/last dots
+      // aren't exactly on the boundary line
+      const margin = n > 1 ? span * 0.02 : 0;
+      const angle =
+        n === 1
+          ? sector.startAngle + span / 2
+          : sector.startAngle + margin + (i / (n - 1)) * (span - margin * 2);
+      const { x, y } = polarToXY(angle, OUTER_R);
+      outerMap.set(p.id, { outerX: x, outerY: y, outerAngle: angle });
+    });
+  }
+
+  // ── Combine ──────────────────────────────────────────────────────────────
+  const placed: PlacedProject[] = [];
+  for (const p of projects) {
+    const inner = innerMap.get(p.id);
+    const outer = outerMap.get(p.id);
+    if (!inner || !outer) continue;
+    placed.push({ ...p, ...inner, ...outer });
+  }
   return placed;
 }
 
+// ─── Ring label info ─────────────────────────────────────────────────────────
 const RING_LABEL_INFO = [
   { short: "Concluído" },
   { short: "Sol. experimentada" },
@@ -158,6 +203,7 @@ const RING_LABEL_INFO = [
   { short: "Cancelado" },
 ];
 
+// ─── Component ────────────────────────────────────────────────────────────────
 interface TooltipState {
   project: PlacedProject;
   svgX: number;
@@ -181,9 +227,9 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
   const [highlightBucket, setHighlightBucket] = useState<BucketKey | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const placed = useMemo(() => placeProjects(), []);
+  const outerSectors = useMemo(() => computeOuterSectors(), []);
+  const placed = useMemo(() => placeProjects(outerSectors), [outerSectors]);
 
-  // Group placed projects by bucket for sector-click logic
   const bucketMap = useMemo(() => {
     const map = new Map<string, PlacedProject[]>();
     for (const p of placed) {
@@ -221,7 +267,6 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
     [onProjectClick]
   );
 
-  // Clicking a sector background opens the bucket list for that sector+ring
   const handleSectorRingClick = useCallback(
     (e: React.MouseEvent<SVGElement>, catIdx: number) => {
       if (!svgRef.current) return;
@@ -233,7 +278,6 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
       const dx = svgPt.x - CX;
       const dy = svgPt.y - CY;
       const clickR = Math.sqrt(dx * dx + dy * dy);
-      // Determine which ring was clicked
       let ring = NUM_RINGS - 1;
       for (let r = 0; r < NUM_RINGS; r++) {
         if (clickR <= ringRadius(r)) {
@@ -251,13 +295,26 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
     [bucketMap, onBucketClick]
   );
 
+  // Highlight dots when a sector in the outer ring is clicked
+  const handleOuterSectorClick = useCallback(
+    (e: React.MouseEvent, sector: OuterSector) => {
+      e.stopPropagation();
+      const catIdx = CATEGORIES.findIndex((c) => c.key === sector.catKey);
+      const catProjects = placed.filter((p) => p.category === sector.catKey);
+      if (catProjects.length > 0) {
+        onBucketClick(catProjects, catIdx, -1);
+      }
+    },
+    [placed, onBucketClick]
+  );
+
   return (
     <div className="relative w-full select-none">
       <svg
         ref={svgRef}
         viewBox={`0 0 ${RADAR_SIZE} ${RADAR_SIZE}`}
         className="w-full h-full"
-        style={{ maxHeight: "82vh" }}
+        style={{ maxHeight: "84vh" }}
       >
         <defs>
           <filter id="glow-strong">
@@ -283,10 +340,13 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
           </clipPath>
         </defs>
 
-        {/* Background */}
+        {/* Dark background covering entire SVG */}
+        <rect x="0" y="0" width={RADAR_SIZE} height={RADAR_SIZE} fill="hsl(225,39%,3%)" />
+
+        {/* Inner radar background */}
         <circle cx={CX} cy={CY} r={MAX_R + 4} fill="url(#bg-gradient)" />
 
-        {/* Sector fills — clickable */}
+        {/* ── Inner sector fills ── */}
         {CATEGORIES.map((cat, i) => {
           const startAngle = START_OFFSET + i * SECTOR_ANGLE;
           const endAngle = startAngle + SECTOR_ANGLE;
@@ -298,9 +358,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
               key={cat.key}
               d={sectorPath(startAngle, endAngle, 0, MAX_R + 4)}
               fill={isActive ? cat.color : "#444"}
-              fillOpacity={
-                isHighlighted ? 0.14 : isActive ? 0.065 : 0.018
-              }
+              fillOpacity={isHighlighted ? 0.14 : isActive ? 0.065 : 0.018}
               clipPath="url(#radar-clip)"
               style={{ cursor: "pointer" }}
               onClick={(e) => handleSectorRingClick(e, i)}
@@ -308,7 +366,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
           );
         })}
 
-        {/* Ring circles */}
+        {/* ── Ring circles ── */}
         {Array.from({ length: NUM_RINGS }, (_, i) => (
           <circle
             key={i}
@@ -317,13 +375,13 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
             r={ringRadius(i)}
             fill="none"
             stroke="rgba(120,160,255,0.12)"
-            strokeWidth={i === 0 ? 1.5 : 1}
+            strokeWidth={1}
             strokeDasharray={i === NUM_RINGS - 1 ? "6 4" : undefined}
             style={{ pointerEvents: "none" }}
           />
         ))}
 
-        {/* Sector dividers */}
+        {/* ── Inner sector dividers ── */}
         {CATEGORIES.map((_, i) => {
           const angle = START_OFFSET + i * SECTOR_ANGLE;
           const inner = polarToXY(angle, 0);
@@ -342,61 +400,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
           );
         })}
 
-        {/* Category labels */}
-        {CATEGORIES.map((cat, i) => {
-          const midAngle = START_OFFSET + (i + 0.5) * SECTOR_ANGLE;
-          const labelR = MAX_R + 30;
-          const { x, y } = polarToXY(midAngle, labelR);
-          const isActive = activeCategories.has(cat.key);
-          const isRight = Math.cos(midAngle) > 0.3;
-          const isLeft = Math.cos(midAngle) < -0.3;
-          let anchor: "middle" | "start" | "end" = "middle";
-          if (isRight) anchor = "start";
-          if (isLeft) anchor = "end";
-          const words = cat.label.split(" ");
-          const half = Math.ceil(words.length / 2);
-          const line1 = words.slice(0, half).join(" ");
-          const line2 = words.slice(half).join(" ");
-          return (
-            <g key={cat.key} opacity={isActive ? 1 : 0.28} style={{ pointerEvents: "none" }}>
-              <circle
-                cx={polarToXY(midAngle, MAX_R + 11).x}
-                cy={polarToXY(midAngle, MAX_R + 11).y}
-                r="4"
-                fill={cat.color}
-                filter="url(#glow-soft)"
-              />
-              <text
-                x={x}
-                y={y - (line2 ? 7 : 0)}
-                textAnchor={anchor}
-                fontSize="12"
-                fontWeight="600"
-                fill={isActive ? cat.color : "#555"}
-                fontFamily="Inter, system-ui, sans-serif"
-                letterSpacing="0.02em"
-              >
-                {line1}
-              </text>
-              {line2 && (
-                <text
-                  x={x}
-                  y={y + 10}
-                  textAnchor={anchor}
-                  fontSize="12"
-                  fontWeight="600"
-                  fill={isActive ? cat.color : "#555"}
-                  fontFamily="Inter, system-ui, sans-serif"
-                  letterSpacing="0.02em"
-                >
-                  {line2}
-                </text>
-              )}
-            </g>
-          );
-        })}
-
-        {/* Ring labels */}
+        {/* ── Ring labels ── */}
         {Array.from({ length: NUM_RINGS }, (_, i) => {
           const r = ringRadius(i);
           const angle = START_OFFSET + 0.035;
@@ -407,7 +411,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
               x={x}
               y={y}
               fontSize="9"
-              fill="rgba(120,160,255,0.4)"
+              fill="rgba(120,160,255,0.38)"
               fontFamily="Inter, system-ui, sans-serif"
               textAnchor="middle"
               dominantBaseline="middle"
@@ -418,7 +422,182 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
           );
         })}
 
-        {/* Project dots */}
+        {/* ═══════════════════════════════════════════════════════════════════
+            OUTER PROPORTIONAL RING
+        ════════════════════════════════════════════════════════════════════ */}
+
+        {/* Outer ring track */}
+        <circle
+          cx={CX}
+          cy={CY}
+          r={OUTER_R}
+          fill="none"
+          stroke="rgba(120,160,255,0.06)"
+          strokeWidth="28"
+          style={{ pointerEvents: "none" }}
+        />
+
+        {/* Outer sector arcs (colored stripes) */}
+        {outerSectors.map((sector) => {
+          const isActive = activeCategories.has(sector.catKey as Category);
+          const arcAngle = sector.endAngle - sector.startAngle;
+          // SVG arc for the outer ring stripe
+          const s = polarToXY(sector.startAngle, OUTER_R - 12);
+          const e = polarToXY(sector.endAngle - 0.004, OUTER_R - 12);
+          const largeArc = arcAngle > Math.PI ? 1 : 0;
+          const outerArcR = OUTER_R + 12;
+          const innerArcR = OUTER_R - 12;
+
+          const path = [
+            `M ${polarToXY(sector.startAngle, innerArcR).x} ${polarToXY(sector.startAngle, innerArcR).y}`,
+            `L ${polarToXY(sector.startAngle, outerArcR).x} ${polarToXY(sector.startAngle, outerArcR).y}`,
+            `A ${outerArcR} ${outerArcR} 0 ${largeArc} 1 ${polarToXY(sector.endAngle - 0.002, outerArcR).x} ${polarToXY(sector.endAngle - 0.002, outerArcR).y}`,
+            `L ${polarToXY(sector.endAngle - 0.002, innerArcR).x} ${polarToXY(sector.endAngle - 0.002, innerArcR).y}`,
+            `A ${innerArcR} ${innerArcR} 0 ${largeArc} 0 ${polarToXY(sector.startAngle, innerArcR).x} ${polarToXY(sector.startAngle, innerArcR).y}`,
+            "Z",
+          ].join(" ");
+
+          return (
+            <path
+              key={sector.catKey}
+              d={path}
+              fill={sector.color}
+              fillOpacity={isActive ? 0.12 : 0.025}
+              style={{ cursor: "pointer", transition: "fill-opacity 0.2s" }}
+              onClick={(e) => handleOuterSectorClick(e, sector)}
+            />
+          );
+        })}
+
+        {/* Outer sector boundary ticks */}
+        {outerSectors.map((sector) => {
+          const inner = polarToXY(sector.startAngle, OUTER_R - 16);
+          const outer = polarToXY(sector.startAngle, OUTER_R + 16);
+          return (
+            <line
+              key={sector.catKey}
+              x1={inner.x}
+              y1={inner.y}
+              x2={outer.x}
+              y2={outer.y}
+              stroke={sector.color}
+              strokeWidth="1.5"
+              strokeOpacity="0.55"
+              style={{ pointerEvents: "none" }}
+            />
+          );
+        })}
+
+        {/* Outer sector category labels (at sector start) */}
+        {outerSectors.map((sector) => {
+          const isActive = activeCategories.has(sector.catKey as Category);
+          const labelAngle = sector.startAngle;
+          const labelR = OUTER_TICK_R + 18;
+          const { x, y } = polarToXY(labelAngle, labelR);
+          const cosA = Math.cos(labelAngle);
+          const sinA = Math.sin(labelAngle);
+          const anchor: "start" | "middle" | "end" =
+            cosA > 0.2 ? "start" : cosA < -0.2 ? "end" : "middle";
+          // Vertical baseline shift: push down when above center
+          const baselineY = sinA < -0.2 ? y - 6 : sinA > 0.2 ? y + 6 : y;
+
+          const words = sector.label.split(" ");
+          const half = Math.ceil(words.length / 2);
+          const line1 = words.slice(0, half).join(" ");
+          const line2 = words.slice(half).join(" ");
+
+          return (
+            <g key={sector.catKey} style={{ pointerEvents: "none" }}>
+              {/* Color dot at sector boundary */}
+              <circle
+                cx={polarToXY(labelAngle, OUTER_R + 22).x}
+                cy={polarToXY(labelAngle, OUTER_R + 22).y}
+                r="3.5"
+                fill={sector.color}
+                fillOpacity={isActive ? 1 : 0.25}
+                filter="url(#glow-soft)"
+              />
+              {/* Label line 1 */}
+              <text
+                x={x}
+                y={baselineY}
+                textAnchor={anchor}
+                dominantBaseline="middle"
+                fontSize="10.5"
+                fontWeight="700"
+                fill={isActive ? sector.color : "#444"}
+                fontFamily="Inter, system-ui, sans-serif"
+                letterSpacing="0.02em"
+                opacity={isActive ? 1 : 0.4}
+              >
+                {line1}
+              </text>
+              {/* Label line 2 */}
+              {line2 && (
+                <text
+                  x={x}
+                  y={baselineY + 13}
+                  textAnchor={anchor}
+                  dominantBaseline="middle"
+                  fontSize="10.5"
+                  fontWeight="700"
+                  fill={isActive ? sector.color : "#444"}
+                  fontFamily="Inter, system-ui, sans-serif"
+                  letterSpacing="0.02em"
+                  opacity={isActive ? 1 : 0.4}
+                >
+                  {line2}
+                </text>
+              )}
+              {/* Project count at sector midpoint */}
+              {(() => {
+                const midAngle = sector.startAngle + (sector.endAngle - sector.startAngle) / 2;
+                const { x: mx, y: my } = polarToXY(midAngle, OUTER_TICK_R + 34);
+                return (
+                  <text
+                    x={mx}
+                    y={my}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontSize="9"
+                    fill={sector.color}
+                    fillOpacity={isActive ? 0.55 : 0.18}
+                    fontFamily="Inter, system-ui, sans-serif"
+                    fontWeight="600"
+                  >
+                    {sector.count}
+                  </text>
+                );
+              })()}
+            </g>
+          );
+        })}
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            CONNECTING LINES: inner dot → outer dot
+        ════════════════════════════════════════════════════════════════════ */}
+        {placed.map((p) => {
+          const isActive = activeCategories.has(p.category);
+          const isHovered = hoveredId === p.id;
+          const color = getCategoryColor(p.category);
+          return (
+            <line
+              key={`conn-${p.id}`}
+              x1={p.px}
+              y1={p.py}
+              x2={p.outerX}
+              y2={p.outerY}
+              stroke={color}
+              strokeWidth={isHovered ? 1.2 : 0.6}
+              strokeOpacity={isActive ? (isHovered ? 0.45 : 0.1) : 0.03}
+              style={{ pointerEvents: "none" }}
+            />
+          );
+        })}
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            INNER RADAR DOTS
+        ════════════════════════════════════════════════════════════════════ */}
         {placed.map((p) => {
           const isActive = activeCategories.has(p.category);
           const isHovered = hoveredId === p.id;
@@ -429,11 +608,10 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
           const color = getCategoryColor(p.category);
           const isCancelled = p.stage === "Cancelado";
           const dotRadius = isHovered ? DOT_R + 2 : DOT_R;
-          const opacity = isActive ? (isCancelled ? 0.35 : 1) : 0.08;
+          const opacity = isActive ? (isCancelled ? 0.35 : 1) : 0.07;
 
           return (
-            <g key={p.id}>
-              {/* Glow halo */}
+            <g key={`inner-${p.id}`}>
               {isActive && !isCancelled && (
                 <circle
                   cx={p.px}
@@ -444,7 +622,6 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
                   style={{ pointerEvents: "none" }}
                 />
               )}
-              {/* Main dot */}
               <circle
                 cx={p.px}
                 cy={p.py}
@@ -453,8 +630,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
                 fillOpacity={opacity}
                 stroke={isCancelled ? "#666" : color}
                 strokeWidth={isHovered ? 2 : 1.5}
-                strokeOpacity={isActive ? 1 : 0.15}
-                className="radar-dot"
+                strokeOpacity={isActive ? 1 : 0.12}
                 filter={
                   isHovered
                     ? "url(#glow-strong)"
@@ -462,6 +638,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
                     ? "url(#glow-soft)"
                     : undefined
                 }
+                style={{ cursor: "pointer" }}
                 onMouseEnter={(e) => handleDotMouseEnter(e, p)}
                 onMouseLeave={handleDotMouseLeave}
                 onClick={(e) => handleDotClick(e, p)}
@@ -470,7 +647,35 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
           );
         })}
 
-        {/* Center */}
+        {/* ═══════════════════════════════════════════════════════════════════
+            OUTER RING DOTS
+        ════════════════════════════════════════════════════════════════════ */}
+        {placed.map((p) => {
+          const isActive = activeCategories.has(p.category);
+          const isHovered = hoveredId === p.id;
+          const color = getCategoryColor(p.category);
+          const isCancelled = p.stage === "Cancelado";
+          return (
+            <circle
+              key={`outer-${p.id}`}
+              cx={p.outerX}
+              cy={p.outerY}
+              r={isHovered ? 5 : 4}
+              fill={isCancelled ? "#555" : color}
+              fillOpacity={isActive ? (isCancelled ? 0.3 : 0.85) : 0.08}
+              stroke={color}
+              strokeWidth={isHovered ? 2 : 0}
+              strokeOpacity={0.9}
+              filter={isHovered ? "url(#glow-strong)" : undefined}
+              style={{ cursor: "pointer" }}
+              onMouseEnter={(e) => handleDotMouseEnter(e, p)}
+              onMouseLeave={handleDotMouseLeave}
+              onClick={(e) => handleDotClick(e, p)}
+            />
+          );
+        })}
+
+        {/* Center glow */}
         <circle
           cx={CX}
           cy={CY}
@@ -491,52 +696,44 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
         />
 
         {/* Tooltip */}
-        {tooltip && (
-          <g style={{ pointerEvents: "none" }}>
-            <foreignObject
-              x={Math.min(tooltip.svgX + 14, RADAR_SIZE - 250)}
-              y={Math.min(
-                Math.max(10, tooltip.svgY - 10),
-                RADAR_SIZE - 80
-              )}
-              width="240"
-              height="90"
-            >
-              <div
-                style={{
-                  background: "rgba(7,11,28,0.96)",
-                  border: `1px solid ${getCategoryColor(tooltip.project.category)}50`,
-                  borderRadius: "8px",
-                  padding: "9px 13px",
-                  fontFamily: "Inter, system-ui, sans-serif",
-                  backdropFilter: "blur(12px)",
-                }}
-              >
+        {tooltip && (() => {
+          const toX = Math.min(tooltip.svgX + 16, RADAR_SIZE - 260);
+          const toY = Math.min(Math.max(10, tooltip.svgY - 10), RADAR_SIZE - 90);
+          const color = getCategoryColor(tooltip.project.category);
+          return (
+            <g style={{ pointerEvents: "none" }}>
+              <foreignObject x={toX} y={toY} width="250" height="90">
                 <div
                   style={{
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    color: getCategoryColor(tooltip.project.category),
-                    marginBottom: "4px",
-                    lineHeight: "1.35",
+                    background: "rgba(7,11,28,0.96)",
+                    border: `1px solid ${color}50`,
+                    borderRadius: "8px",
+                    padding: "9px 13px",
+                    fontFamily: "Inter, system-ui, sans-serif",
+                    backdropFilter: "blur(12px)",
                   }}
                 >
-                  {tooltip.project.title.length > 55
-                    ? tooltip.project.title.slice(0, 55) + "…"
-                    : tooltip.project.title}
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      color,
+                      marginBottom: "4px",
+                      lineHeight: "1.35",
+                    }}
+                  >
+                    {tooltip.project.title.length > 52
+                      ? tooltip.project.title.slice(0, 52) + "…"
+                      : tooltip.project.title}
+                  </div>
+                  <div style={{ fontSize: "10px", color: "rgba(170,190,255,0.6)" }}>
+                    {tooltip.project.stage} · {tooltip.project.id}
+                  </div>
                 </div>
-                <div
-                  style={{
-                    fontSize: "10px",
-                    color: "rgba(170,190,255,0.65)",
-                  }}
-                >
-                  {tooltip.project.stage} · {tooltip.project.id}
-                </div>
-              </div>
-            </foreignObject>
-          </g>
-        )}
+              </foreignObject>
+            </g>
+          );
+        })()}
       </svg>
     </div>
   );

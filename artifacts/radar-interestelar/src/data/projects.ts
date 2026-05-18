@@ -76,7 +76,7 @@ export const projects: Project[] = [
   {
     id: "GEIN-4",
     title: "Academy - Certificação de Operadores do Mercado",
-    description: "Como podemos criar um processo de certificação que se torne o novo padrão de qualidade do mercado, de forma autônoma e sustentável? Modernizar o processo de certificação profissional da CCEE com controle ponta a ponta, provas online, dados estratégicos e modelo escalável.",
+    description: "\"Como podemos criar um processo de certificação que se torne o novo padrão de qualidade do mercado, de forma autônoma e sustentável?\" Atualmente, o processo de certificação profissional da CCEE depende de um parceiro externo para a aplicação das provas, o que limita a autonomia da empresa sobre uma frente estratégica de capacitação. A CCEE não possui controle integral sobre o formato das provas, a customização da plataforma, a experiência dos candidatos nem o acesso a dados detalhados de desempenho, como acertos e erros por questão. Essa limitação reduz a capacidade de aprimorar continuamente o conteúdo, identificar lacunas de conhecimento dos profissionais certificados e tomar decisões com base em evidências. Além da limitação operacional e técnica, o modelo atual apresenta um desequilíbrio financeiro relevante. A receita gerada pelas inscrições é integralmente retida pelo parceiro externo. Considerando um ticket médio aproximado de R$ 1.100 por inscrição e cerca de 150 inscritos por ano, estima-se uma arrecadação anual de aproximadamente R$ 165 mil que não retorna à CCEE. Entre 2021 e 2024, o volume acumulado de inscrições ultrapassou 550 participantes, representando mais de R$ 600 mil em receita potencial direcionada ao parceiro externo, sem captura financeira pela CCEE. Há também uma preocupação relacionada à qualidade e à credibilidade da certificação. O histórico mostra uma evolução expressiva da taxa de aprovação entre 2021 e 2023, passando de 25% para 60%, associada à repetição frequente de questões nas provas aplicadas. Em 2024, quando a CCEE assumiu a elaboração das perguntas, a taxa de aprovação caiu para 12%, indicando maior rigor técnico e evidenciando fragilidades no modelo anterior. Dessa forma, a oportunidade está em modernizar o processo de certificação por meio de uma solução que permita à CCEE controlar a jornada ponta a ponta, aplicar provas online com segurança, acessar dados estratégicos, personalizar a experiência com sua identidade institucional e estruturar um modelo escalável, rentável e alinhado às exigências do mercado.",
     category: "Novos_negócios",
     stage: "Solução experimentada",
     link: "https://centraldeservicosccee.atlassian.net/browse/GEIN-4",
@@ -164,7 +164,7 @@ export const projects: Project[] = [
   {
     id: "GEIN-17",
     title: "Modernização De Aplicações",
-    description: "Como podemos tornar a modernização das aplicações legadas da CCEE mais eficiente, ágil e com pouco esforço manual, para as equipes de tecnologia, de modo que reduzamos custos, aumentemos a eficiência e a escalabilidade?",
+    description: "A CCEE possui cerca de 30 aplicações legadas, desenvolvidas majoritariamente entre os anos 2000 e 2010, que hoje limitam a agilidade, a escalabilidade e a eficiência operacional da TI. Esse ambiente gera altos custos de manutenção e licenciamento, maior complexidade técnica, riscos de segurança, dificuldades de integração com arquiteturas modernas e forte dependência de fornecedores especializados. Embora haja avanços na migração para nuvem, ainda é necessário estruturar uma abordagem mais eficiente e escalável para modernizar essas aplicações com menor esforço manual, reduzindo custos, aumentando a produtividade das equipes e ampliando a capacidade de evolução dos sistemas. Como podemos tornar a modernização das aplicações legadas da CCEE mais eficiente, ágil e com pouco esforço manual, para as equipes de tecnologia, de modo que reduzamos custos, aumentemos a eficiência e a escalabilidade?",
     category: "Inovação_Corporativa",
     stage: "Solução experimentada",
     link: "https://centraldeservicosccee.atlassian.net/browse/GEIN-17",
@@ -284,7 +284,7 @@ export const projects: Project[] = [
   {
     id: "GEIN-47",
     title: "Alternativa para a ferramenta RPost",
-    description: "Como podemos enviar notificações formais da CCEE via e-mail registrado e auditado, garantindo a comprovação e integração sistêmica, de modo que aumentemos rastreabilidade, reduzamos esforço/custos e viabilizar um novo negócio?",
+    description: "Como podemos enviar notificações formais da CCEE via e-mail registrado e auditado, garantindo a comprovação e integração sistêmica, para agentes do setor elétrico, de modo que aumentemos rastreabilidade, reduzamos esforço/custos e viabilizar um novo negócio?",
     category: "Novos_negócios",
     stage: "Em busca de soluções externas",
     link: "https://centraldeservicosccee.atlassian.net/browse/GEIN-47",
@@ -868,7 +868,7 @@ export const projects: Project[] = [
   {
     id: "GEIN-8",
     title: "Evolução das atuações GEGO",
-    description: "Como podemos reposicionar a imagem da GEGO, para que as áreas da CCEE percebam a área como referência em confiança, clareza e apoio estratégico?",
+    description: "\"Como podemos reposicionar a imagem da GEGO, para que as áreas da CCEE, de modo que a área seja percebida como referência em confiança, clareza e apoio estratégico?\"",
     category: "Inovação_Corporativa",
     stage: "Solução experimentada",
     link: "https://centraldeservicosccee.atlassian.net/browse/GEIN-8",
@@ -892,7 +892,7 @@ export const projects: Project[] = [
   {
     id: "GEIN-134",
     title: "Machine Customers: Agentes Comprando Energia no Mercado Livre",
-    description: "Como podemos criar agentes autônomos que executem a compra de energia no mercado livre seguindo as regras definidas pelo consumidor tornando o processo simples, eficiente e acessível?",
+    description: "Como podemos criar agentes autônomos que executem a compra de energia no mercado livre seguindo as regras definidas pelo consumidor tornando o processo simples, eficiente e acessível para qualquer consumidor elegível, independente do seu nível de expertise?",
     category: "Novos_negócios",
     stage: "Identificado",
     link: "https://centraldeservicosccee.atlassian.net/browse/GEIN-134",
@@ -900,7 +900,7 @@ export const projects: Project[] = [
   {
     id: "GEIN-135",
     title: "Economia Sintética: Simular clientes e mercados para validar soluções",
-    description: "Como podemos criar mecanismos que validem tanto o impacto real das soluções atuais da CCEE quanto a aceitação e viabilidade de novas soluções antes de investir em sua construção em escala?",
+    description: "Como podemos criar mecanismos que validem tanto o impacto real das soluções atuais da CCEE quanto a aceitação e viabilidade de novas soluções para clientes existentes e públicos ainda não atendidos antes de investir em sua construção em escala?",
     category: "Novos_negócios",
     stage: "Identificado",
     link: "https://centraldeservicosccee.atlassian.net/browse/GEIN-135",

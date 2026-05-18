@@ -9,8 +9,14 @@ import {
   type Category,
 } from "@/data/projects";
 
+// ─── Projects filter: exclude Identificado (ring 6) and Cancelado (ring 7) ──
+const IGNORED_RINGS = new Set([6, 7]);
+export const visibleProjects = projects.filter(
+  (p) => !IGNORED_RINGS.has(getStageRing(p.stage))
+);
+
 // ─── Inner radar constants ───────────────────────────────────────────────────
-const NUM_RINGS = 8;
+const NUM_RINGS = 6; // only rings 0–5 after filtering
 const RADAR_SIZE = 1100;
 const CX = RADAR_SIZE / 2;         // 550
 const CY = RADAR_SIZE / 2;         // 550
@@ -71,12 +77,12 @@ interface OuterSector {
 }
 
 function computeOuterSectors(): OuterSector[] {
-  const total = projects.length;
+  const total = visibleProjects.length;
   const sectors: OuterSector[] = [];
   let cursor = START_OFFSET;
 
   for (const cat of CATEGORIES) {
-    const count = projects.filter((p) => p.category === cat.key).length;
+    const count = visibleProjects.filter((p) => p.category === cat.key).length;
     const span = (count / total) * 2 * Math.PI;
     sectors.push({
       catKey: cat.key,
@@ -105,7 +111,7 @@ export interface PlacedProject extends Project {
 function placeProjects(outerSectors: OuterSector[]): PlacedProject[] {
   // ── Inner radar: bucket grid placement ──────────────────────────────────
   const buckets: Map<string, Project[]> = new Map();
-  for (const p of projects) {
+  for (const p of visibleProjects) {
     const ring = getStageRing(p.stage);
     const catIdx = CATEGORIES.findIndex((c) => c.key === p.category);
     if (catIdx < 0) continue;
@@ -163,7 +169,7 @@ function placeProjects(outerSectors: OuterSector[]): PlacedProject[] {
   const outerMap = new Map<string, { outerX: number; outerY: number; outerAngle: number }>();
 
   for (const sector of outerSectors) {
-    const sectorProjects = projects.filter((p) => p.category === sector.catKey);
+    const sectorProjects = visibleProjects.filter((p) => p.category === sector.catKey);
     const n = sectorProjects.length;
     const span = sector.endAngle - sector.startAngle;
 
@@ -182,7 +188,7 @@ function placeProjects(outerSectors: OuterSector[]): PlacedProject[] {
 
   // ── Combine ──────────────────────────────────────────────────────────────
   const placed: PlacedProject[] = [];
-  for (const p of projects) {
+  for (const p of visibleProjects) {
     const inner = innerMap.get(p.id);
     const outer = outerMap.get(p.id);
     if (!inner || !outer) continue;
@@ -191,7 +197,7 @@ function placeProjects(outerSectors: OuterSector[]): PlacedProject[] {
   return placed;
 }
 
-// ─── Ring label info ─────────────────────────────────────────────────────────
+// ─── Ring label info (rings 0–5 only; 6 and 7 are filtered out) ──────────────
 const RING_LABEL_INFO = [
   { short: "Concluído" },
   { short: "Sol. experimentada" },
@@ -199,8 +205,6 @@ const RING_LABEL_INFO = [
   { short: "Em definição" },
   { short: "Em aprofundamento" },
   { short: "Gerar ideias" },
-  { short: "Identificado" },
-  { short: "Cancelado" },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────

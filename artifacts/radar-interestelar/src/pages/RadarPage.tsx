@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { RadarChart, type PlacedProject } from "@/components/RadarChart";
-import { CATEGORIES, STAGES, projects, getCategoryLabel, type Category } from "@/data/projects";
+import { RadarChart, visibleProjects, type PlacedProject } from "@/components/RadarChart";
+import { CATEGORIES, STAGES, getCategoryLabel, type Category } from "@/data/projects";
 
 function StagesBadge({ stage }: { stage: string }) {
   const stageInfo = STAGES.find((s) => s.key === stage);
@@ -174,18 +174,20 @@ function BucketListPanel({
 }
 
 function StatsBar() {
-  const total = projects.length;
-  const concluded = projects.filter(
+  const total = visibleProjects.length;
+  const concluded = visibleProjects.filter(
     (p) => p.stage === "Concluído" || p.stage === "Finalizado"
   ).length;
-  const inProgress = projects.filter(
+  const inProgress = visibleProjects.filter(
     (p) =>
       p.stage === "Solução experimentada" ||
       p.stage === "Em experimentação" ||
       p.stage === "Em acompanhamento" ||
       p.stage === "Em progresso"
   ).length;
-  const identified = projects.filter((p) => p.stage === "Identificado").length;
+  const gearingUp = visibleProjects.filter(
+    (p) => p.stage === "Gerar ideias" || p.stage === "Em definição do produto/estratégia" || p.stage === "Em aprofundamento"
+  ).length;
 
   return (
     <div className="flex flex-wrap gap-4 text-center">
@@ -205,8 +207,8 @@ function StatsBar() {
       </div>
       <div className="w-px bg-white/8" />
       <div>
-        <div className="text-2xl font-bold text-amber-400">{identified}</div>
-        <div className="text-xs text-slate-500 mt-0.5">Identificados</div>
+        <div className="text-2xl font-bold text-amber-400">{gearingUp}</div>
+        <div className="text-xs text-slate-500 mt-0.5">Em ideação</div>
       </div>
     </div>
   );
@@ -328,7 +330,7 @@ export function RadarPage() {
           </button>
           {CATEGORIES.map((cat) => {
             const isOn = activeCategories.has(cat.key);
-            const count = projects.filter((p) => p.category === cat.key).length;
+            const count = visibleProjects.filter((p) => p.category === cat.key).length;
             return (
               <button
                 key={cat.key}
@@ -359,12 +361,12 @@ export function RadarPage() {
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3 px-1">
               Anéis (Etapa)
             </div>
-            {STAGES.filter((s, i, arr) => arr.findIndex((x) => x.ring === s.ring) === i)
+            {STAGES.filter((s, i, arr) => arr.findIndex((x) => x.ring === s.ring) === i && s.ring < 6)
               .sort((a, b) => a.ring - b.ring)
               .map((s) => {
                 const ringColors = [
                   "#34D399", "#10B981", "#38BDF8", "#818CF8",
-                  "#F59E0B", "#A78BFA", "#FB7185", "#9CA3AF",
+                  "#F59E0B", "#A78BFA",
                 ];
                 const c = ringColors[s.ring];
                 return (

@@ -103,66 +103,8 @@ export interface PlacedProject extends Project {
 }
 
 function placeProjects(outerSectors: OuterSector[]): PlacedProject[] {
-  // ── Inner radar: bucket grid placement ──────────────────────────────────
-  const buckets: Map<string, Project[]> = new Map();
-  for (const p of visibleProjects) {
-    const ring = getStageRing(p.stage);
-    const catIdx = CATEGORIES.findIndex((c) => c.key === p.category);
-    if (catIdx < 0) continue;
-    const key = `${catIdx}-${ring}`;
-    if (!buckets.has(key)) buckets.set(key, []);
-    buckets.get(key)!.push(p);
-  }
-
-  const innerMap = new Map<string, { px: number; py: number; ring: number; sectorIndex: number }>();
-
-  buckets.forEach((ps, key) => {
-    const [catIdxStr, ringStr] = key.split("-");
-    const catIdx = parseInt(catIdxStr);
-    const ring = parseInt(ringStr);
-    const n = ps.length;
-
-    const sector = outerSectors[catIdx];
-    const startAngle = sector.startAngle;
-    const endAngle = sector.endAngle;
-    const sectorSpan = endAngle - startAngle;
-    const innerR = ring === 0 ? MIN_R * 0.25 : ringRadius(ring - 1) + DOT_R + 3;
-    const outerR = ringRadius(ring) - DOT_R - 3;
-    const radialExtent = Math.max(1, outerR - innerR);
-    const angMargin = sectorSpan * ANG_MARGIN_FRAC;
-    const minAngle = startAngle + angMargin;
-    const maxAngle = endAngle - angMargin;
-    const angExtent = maxAngle - minAngle;
-    const midR = (innerR + outerR) / 2;
-    const arcLen = midR * angExtent;
-
-    const maxCols = Math.max(1, Math.floor(arcLen / MIN_SPACING));
-    const maxRows = Math.max(1, Math.floor(radialExtent / MIN_SPACING));
-    const idealCols = Math.ceil(Math.sqrt(n * (arcLen / Math.max(1, radialExtent))));
-    let cols = Math.min(maxCols, Math.max(1, Math.min(idealCols, n)));
-    let rows = Math.ceil(n / cols);
-    if (rows > maxRows) {
-      rows = maxRows;
-      cols = Math.ceil(n / rows);
-    }
-
-    const actualAngSpacing = cols > 1 ? angExtent / (cols - 1) : 0;
-
-    ps.forEach((p, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const tA = cols > 1 ? col / (cols - 1) : 0.5;
-      const tR = rows > 1 ? row / (rows - 1) : 0.5;
-      const brickOffset = row % 2 === 0 ? 0 : actualAngSpacing * 0.5;
-      const angle = Math.max(minAngle, Math.min(maxAngle, minAngle + tA * angExtent + brickOffset));
-      const r = Math.max(innerR, Math.min(outerR, innerR + tR * radialExtent));
-      const { x, y } = polarToXY(angle, r);
-      innerMap.set(p.id, { px: x, py: y, ring, sectorIndex: catIdx });
-    });
-  });
-
-  // ── Outer ring: evenly spaced within each proportional sector ────────────
-  // Projects are distributed uniformly along the arc so outer dots never overlap.
+  // ── Step 1: Outer ring — evenly spaced within each proportional sector ────
+  // Assigns each project a unique angle so outer dots never overlap.
   const outerMap = new Map<string, { outerX: number; outerY: number; outerAngle: number }>();
 
   for (const sector of outerSectors) {
@@ -179,6 +121,26 @@ function placeProjects(outerSectors: OuterSector[]): PlacedProject[] {
       const { x, y } = polarToXY(angle, OUTER_R);
       outerMap.set(p.id, { outerX: x, outerY: y, outerAngle: angle });
     });
+  }
+
+  // ── Step 2: Inner ring — radially aligned with the outer dot ─────────────
+  // Each project's inner dot sits at the SAME angle as its outer dot, at the
+  // midpoint radius of its maturity ring band. Because outer dots have unique
+  // angles, inner dots also have unique angles → no inner-to-inner overlaps.
+  const innerMap = new Map<string, { px: number; py: number; ring: number; sectorIndex: number }>();
+
+  for (const p of visibleProjects) {
+    const outer = outerMap.get(p.id);
+    if (!outer) continue;
+    const ring = getStageRing(p.stage);
+    const catIdx = CATEGORIES.findIndex((c) => c.key === p.category);
+
+    const bandInner = ring === 0 ? MIN_R * 0.25 : ringRadius(ring - 1) + DOT_R + 3;
+    const bandOuter = ringRadius(ring) - DOT_R - 3;
+    const midR = (bandInner + bandOuter) / 2;
+
+    const { x, y } = polarToXY(outer.outerAngle, midR);
+    innerMap.set(p.id, { px: x, py: y, ring, sectorIndex: catIdx });
   }
 
   // ── Combine ──────────────────────────────────────────────────────────────

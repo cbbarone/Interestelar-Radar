@@ -34,13 +34,13 @@ export interface Project {
 }
 
 export const CATEGORIES: { key: Category; label: string; color: string; bgColor: string }[] = [
-  { key: "Novos_negócios",      label: "Novos Negócios",       color: "#1E6FBF", bgColor: "rgba(30,111,191,0.15)" },
-  { key: "Inovação_Corporativa",label: "Inovação Corporativa", color: "#0A3D8F", bgColor: "rgba(10,61,143,0.15)"  },
-  { key: "Centralidade_Cliente",label: "Centralidade Cliente", color: "#3B9AD4", bgColor: "rgba(59,154,212,0.15)" },
-  { key: "Força_tarefa",        label: "Força Tarefa",         color: "#5EC4E8", bgColor: "rgba(94,196,232,0.15)" },
-  { key: "Estratégia",          label: "Estratégia",           color: "#2AB0CC", bgColor: "rgba(42,176,204,0.15)" },
-  { key: "Meta_Gerencial",      label: "Meta Gerencial",       color: "#1B52A0", bgColor: "rgba(27,82,160,0.15)"  },
-  { key: "Meta_Institucional",  label: "Meta Institucional",   color: "#4A8FC0", bgColor: "rgba(74,143,192,0.15)" },
+  { key: "Novos_negócios",      label: "Novos Negócios",       color: "#FFFFFF", bgColor: "rgba(255,255,255,0.10)" },
+  { key: "Inovação_Corporativa",label: "Inovação Corporativa", color: "#0066CC", bgColor: "rgba(0,102,204,0.15)"   },
+  { key: "Centralidade_Cliente",label: "Centralidade Cliente", color: "#00C5E8", bgColor: "rgba(0,197,232,0.15)"   },
+  { key: "Força_tarefa",        label: "Força Tarefa",         color: "#1A3A8C", bgColor: "rgba(26,58,140,0.15)"   },
+  { key: "Estratégia",          label: "Estratégia",           color: "#7EC5E8", bgColor: "rgba(126,197,232,0.15)" },
+  { key: "Meta_Gerencial",      label: "Meta Gerencial",       color: "#1B52A0", bgColor: "rgba(27,82,160,0.15)"   },
+  { key: "Meta_Institucional",  label: "Meta Institucional",   color: "#4A8FC0", bgColor: "rgba(74,143,192,0.15)"  },
 ];
 
 export const STAGES: { key: Stage; label: string; ring: number }[] = [

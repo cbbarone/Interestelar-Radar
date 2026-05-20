@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import {
   visibleProjects,
-  CATEGORIES,
+  ACTIVE_CATEGORIES,
   STAGES,
   getCategoryColor,
   getStageRing,
@@ -25,7 +25,7 @@ const ANG_MARGIN_FRAC = 0.07;
 const OUTER_R = 490;               // radius of the outer dot ring
 const OUTER_TICK_R = OUTER_R + 18; // label placement radius
 const START_OFFSET = -Math.PI / 2;
-const NUM_CATEGORIES = CATEGORIES.length;
+const NUM_CATEGORIES = ACTIVE_CATEGORIES.length;
 const SECTOR_ANGLE = (2 * Math.PI) / NUM_CATEGORIES;
 
 function ringRadius(ring: number): number {
@@ -75,7 +75,7 @@ function computeOuterSectors(): OuterSector[] {
   const sectors: OuterSector[] = [];
   let cursor = START_OFFSET;
 
-  for (const cat of CATEGORIES) {
+  for (const cat of ACTIVE_CATEGORIES) {
     const count = visibleProjects.filter((p) => p.category === cat.key).length;
     const span = (count / total) * 2 * Math.PI;
     sectors.push({
@@ -133,7 +133,7 @@ function placeProjects(outerSectors: OuterSector[]): PlacedProject[] {
     const outer = outerMap.get(p.id);
     if (!outer) continue;
     const ring = getStageRing(p.stage);
-    const catIdx = CATEGORIES.findIndex((c) => c.key === p.category);
+    const catIdx = ACTIVE_CATEGORIES.findIndex((c) => c.key === p.category);
 
     const bandInner = ring === 0 ? MIN_R * 0.25 : ringRadius(ring - 1) + DOT_R + 3;
     const bandOuter = ringRadius(ring) - DOT_R - 3;
@@ -260,7 +260,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
   const handleOuterSectorClick = useCallback(
     (e: React.MouseEvent, sector: OuterSector) => {
       e.stopPropagation();
-      const catIdx = CATEGORIES.findIndex((c) => c.key === sector.catKey);
+      const catIdx = ACTIVE_CATEGORIES.findIndex((c) => c.key === sector.catKey);
       const catProjects = placed.filter((p) => p.category === sector.catKey);
       if (catProjects.length > 0) {
         onBucketClick(catProjects, catIdx, -1);
@@ -309,7 +309,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
 
         {/* ── Inner sector fills (same proportional angles as outer ring) ── */}
         {outerSectors.map((sector, i) => {
-          const cat = CATEGORIES[i];
+          const cat = ACTIVE_CATEGORIES[i];
           const isActive = activeCategories.has(cat.key);
           const isHighlighted =
             highlightBucket !== null && highlightBucket.catIdx === i;

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { RadarChart, type PlacedProject } from "@/components/RadarChart";
-import { CATEGORIES, STAGES, visibleProjects, getCategoryLabel, type Category } from "@/data/projects";
+import { ACTIVE_CATEGORIES, STAGES, visibleProjects, getCategoryLabel, type Category } from "@/data/projects";
 
 function StagesBadge({ stage }: { stage: string }) {
   const stageInfo = STAGES.find((s) => s.key === stage);
@@ -29,7 +29,7 @@ function ProjectPanel({
   onClose: () => void;
   onBack?: () => void;
 }) {
-  const { color } = CATEGORIES.find((c) => c.key === project.category) ?? { color: "#888" };
+  const { color } = ACTIVE_CATEGORIES.find((c) => c.key === project.category) ?? { color: "#888" };
 
   return (
     <div className="fade-in-up flex flex-col h-full">
@@ -108,7 +108,7 @@ function BucketListPanel({
   onSelectProject: (p: PlacedProject) => void;
   onClose: () => void;
 }) {
-  const cat = CATEGORIES[catIdx];
+  const cat = ACTIVE_CATEGORIES[catIdx];
   const ringColors = [
     "#34D399", "#10B981", "#38BDF8", "#818CF8", "#F59E0B", "#A78BFA", "#FB7185", "#9CA3AF",
   ];
@@ -221,7 +221,7 @@ type PanelMode =
 
 export function RadarPage() {
   const [activeCategories, setActiveCategories] = useState<Set<Category>>(
-    new Set(CATEGORIES.map((c) => c.key))
+    new Set(ACTIVE_CATEGORIES.map((c) => c.key))
   );
   const [panel, setPanel] = useState<PanelMode>({ kind: "none" });
 
@@ -238,10 +238,10 @@ export function RadarPage() {
   }
 
   function toggleAll() {
-    if (activeCategories.size === CATEGORIES.length) {
-      setActiveCategories(new Set([CATEGORIES[0].key]));
+    if (activeCategories.size === ACTIVE_CATEGORIES.length) {
+      setActiveCategories(new Set([ACTIVE_CATEGORIES[0].key]));
     } else {
-      setActiveCategories(new Set(CATEGORIES.map((c) => c.key)));
+      setActiveCategories(new Set(ACTIVE_CATEGORIES.map((c) => c.key)));
     }
   }
 
@@ -308,19 +308,19 @@ export function RadarPage() {
           <button
             onClick={toggleAll}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all hover:bg-white/6"
-            style={{ color: activeCategories.size === CATEGORIES.length ? "white" : "#6b7280" }}
+            style={{ color: activeCategories.size === ACTIVE_CATEGORIES.length ? "white" : "#6b7280" }}
           >
             <span
               className="w-3 h-3 rounded-sm border flex items-center justify-center"
               style={{
-                borderColor: activeCategories.size === CATEGORIES.length ? "white" : "#4b5563",
+                borderColor: activeCategories.size === ACTIVE_CATEGORIES.length ? "white" : "#4b5563",
                 background:
-                  activeCategories.size === CATEGORIES.length
+                  activeCategories.size === ACTIVE_CATEGORIES.length
                     ? "rgba(255,255,255,0.15)"
                     : "transparent",
               }}
             >
-              {activeCategories.size === CATEGORIES.length && (
+              {activeCategories.size === ACTIVE_CATEGORIES.length && (
                 <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
                   <path d="M1 4L3 6L7 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
@@ -328,7 +328,7 @@ export function RadarPage() {
             </span>
             Todos
           </button>
-          {CATEGORIES.map((cat) => {
+          {ACTIVE_CATEGORIES.map((cat) => {
             const isOn = activeCategories.has(cat.key);
             const count = visibleProjects.filter((p) => p.category === cat.key).length;
             return (

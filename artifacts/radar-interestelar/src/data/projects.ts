@@ -935,3 +935,8 @@ const IGNORED_RINGS = new Set([6, 7]);
 export const visibleProjects = projects.filter(
   (p) => !IGNORED_RINGS.has(getStageRing(p.stage))
 );
+
+// Only categories that have at least one visible project
+export const ACTIVE_CATEGORIES = CATEGORIES.filter((cat) =>
+  visibleProjects.some((p) => p.category === cat.key)
+);

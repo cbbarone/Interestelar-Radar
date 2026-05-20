@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from "react";
+import cceeLogo from "@assets/ccee_gein_nobg.png";
 import {
   visibleProjects,
   ACTIVE_CATEGORIES,
@@ -14,7 +15,8 @@ const NUM_RINGS = 6; // only rings 0–5 after filtering
 const RADAR_SIZE = 1100;
 const CX = RADAR_SIZE / 2;         // 550
 const CY = RADAR_SIZE / 2;         // 550
-const MIN_R = 52;
+const CENTER_R = 90;               // central logo ring — no projects enter here
+const MIN_R = 108;
 const MAX_R = 420;
 const RING_STEP = (MAX_R - MIN_R) / (NUM_RINGS - 1);
 const DOT_R = 5;
@@ -316,7 +318,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
           return (
             <path
               key={cat.key}
-              d={sectorPath(sector.startAngle, sector.endAngle, 0, MAX_R + 4)}
+              d={sectorPath(sector.startAngle, sector.endAngle, CENTER_R, MAX_R + 4)}
               fill={isActive ? cat.color : "#444"}
               fillOpacity={isHighlighted ? 0.14 : isActive ? 0.065 : 0.018}
               clipPath="url(#radar-clip)"
@@ -343,7 +345,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
 
         {/* ── Inner sector dividers (aligned with proportional outer ring) ── */}
         {outerSectors.map((sector, i) => {
-          const inner = polarToXY(sector.startAngle, 0);
+          const inner = polarToXY(sector.startAngle, CENTER_R);
           const outer = polarToXY(sector.startAngle, MAX_R + 4);
           return (
             <line
@@ -380,6 +382,27 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
             </text>
           );
         })}
+
+        {/* ── Central logo ring ── */}
+        {/* Solid dark fill so logo sits on clean background */}
+        <circle cx={CX} cy={CY} r={CENTER_R} fill="hsl(225,39%,4%)" style={{ pointerEvents: "none" }} />
+        {/* Subtle border ring */}
+        <circle
+          cx={CX} cy={CY} r={CENTER_R}
+          fill="none"
+          stroke="rgba(120,160,255,0.22)"
+          strokeWidth="1.5"
+          style={{ pointerEvents: "none" }}
+        />
+        {/* CCEE GEIN logo */}
+        <image
+          href={cceeLogo}
+          x={CX - CENTER_R * 0.78}
+          y={CY - CENTER_R * 0.78}
+          width={CENTER_R * 1.56}
+          height={CENTER_R * 1.56}
+          style={{ pointerEvents: "none" }}
+        />
 
         {/* ═══════════════════════════════════════════════════════════════════
             OUTER PROPORTIONAL RING

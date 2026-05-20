@@ -4,7 +4,6 @@ import {
   visibleProjects,
   ACTIVE_CATEGORIES,
   STAGES,
-  getCategoryColor,
   getStageRing,
   type Project,
   type Category,
@@ -184,13 +183,51 @@ interface Props {
   activeCategories: Set<Category>;
   onProjectClick: (p: PlacedProject) => void;
   onBucketClick: (ps: PlacedProject[], catIdx: number, ring: number) => void;
+  isDark: boolean;
 }
 
-export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: Props) {
+export function RadarChart({ activeCategories, onProjectClick, onBucketClick, isDark }: Props) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [highlightBucket, setHighlightBucket] = useState<BucketKey | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  const svgTheme = isDark ? {
+    bgRect:       "hsl(220,70%,2%)",
+    gradStart:    "hsl(220,70%,9%)",
+    gradEnd:      "hsl(220,70%,3%)",
+    ring:         "rgba(30,100,200,0.20)",
+    divider:      "rgba(30,100,200,0.22)",
+    label:        "rgba(80,160,230,0.45)",
+    inactiveLabel:"#444",
+    centerFill:   "hsl(220,70%,5%)",
+    centerBorder: "rgba(30,100,200,0.35)",
+    outerTrack:   "rgba(120,160,255,0.06)",
+    cancelledDot: "#555",
+    cancelledStroke: "#666",
+  } : {
+    bgRect:       "#EEF4FF",
+    gradStart:    "#DDE9FF",
+    gradEnd:      "#EEF4FF",
+    ring:         "rgba(0,60,180,0.12)",
+    divider:      "rgba(0,60,180,0.14)",
+    label:        "rgba(0,60,180,0.50)",
+    inactiveLabel:"#aaa",
+    centerFill:   "#FFFFFF",
+    centerBorder: "rgba(0,80,180,0.25)",
+    outerTrack:   "rgba(0,80,180,0.05)",
+    cancelledDot: "#bbb",
+    cancelledStroke: "#999",
+  };
+
+  const catColor = (category: Category): string => {
+    const cat = ACTIVE_CATEGORIES.find(c => c.key === category);
+    if (!cat) return isDark ? "#888" : "#555";
+    return isDark ? cat.color : (cat.lightColor ?? cat.color);
+  };
+
+  const sectorColor = (sector: { catKey: string }): string =>
+    catColor(sector.catKey as Category);
 
   const outerSectors = useMemo(() => computeOuterSectors(), []);
   const placed = useMemo(() => placeProjects(outerSectors), [outerSectors]);
@@ -297,16 +334,16 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
             </feMerge>
           </filter>
           <radialGradient id="bg-gradient" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="hsl(220,70%,9%)" stopOpacity="1" />
-            <stop offset="100%" stopColor="hsl(220,70%,3%)" stopOpacity="1" />
+            <stop offset="0%" stopColor={svgTheme.gradStart} stopOpacity="1" />
+            <stop offset="100%" stopColor={svgTheme.gradEnd} stopOpacity="1" />
           </radialGradient>
           <clipPath id="radar-clip">
             <circle cx={CX} cy={CY} r={MAX_R + 4} />
           </clipPath>
         </defs>
 
-        {/* Dark background covering entire SVG */}
-        <rect x="0" y="0" width={RADAR_SIZE} height={RADAR_SIZE} fill="hsl(220,70%,2%)" />
+        {/* Background covering entire SVG */}
+        <rect x="0" y="0" width={RADAR_SIZE} height={RADAR_SIZE} fill={svgTheme.bgRect} />
 
         {/* Inner radar background */}
         <circle cx={CX} cy={CY} r={MAX_R + 4} fill="url(#bg-gradient)" />
@@ -321,7 +358,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
             <path
               key={cat.key}
               d={sectorPath(sector.startAngle, sector.endAngle, CENTER_R, MAX_R + 4)}
-              fill={isActive ? cat.color : "#444"}
+              fill={isActive ? catColor(cat.key) : svgTheme.inactiveLabel}
               fillOpacity={isHighlighted ? 0.14 : isActive ? 0.065 : 0.018}
               clipPath="url(#radar-clip)"
               style={{ cursor: "pointer" }}
@@ -338,7 +375,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
             cy={CY}
             r={ringRadius(i)}
             fill="none"
-            stroke="rgba(30,100,200,0.20)"
+            stroke={svgTheme.ring}
             strokeWidth={1}
             strokeDasharray={i === NUM_RINGS - 1 ? "6 4" : undefined}
             style={{ pointerEvents: "none" }}
@@ -356,7 +393,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
               y1={inner.y}
               x2={outer.x}
               y2={outer.y}
-              stroke="rgba(30,100,200,0.22)"
+              stroke={svgTheme.divider}
               strokeWidth="1"
               style={{ pointerEvents: "none" }}
             />
@@ -374,7 +411,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
               x={x}
               y={y}
               fontSize="9"
-              fill="rgba(80,160,230,0.45)"
+              fill={svgTheme.label}
               fontFamily="Inter, system-ui, sans-serif"
               textAnchor="middle"
               dominantBaseline="middle"
@@ -386,13 +423,13 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
         })}
 
         {/* ── Central logo ring ── */}
-        {/* Solid dark fill so logo sits on clean background */}
-        <circle cx={CX} cy={CY} r={CENTER_R} fill="hsl(220,70%,5%)" style={{ pointerEvents: "none" }} />
+        {/* Solid fill so logo sits on clean background */}
+        <circle cx={CX} cy={CY} r={CENTER_R} fill={svgTheme.centerFill} style={{ pointerEvents: "none" }} />
         {/* Subtle border ring */}
         <circle
           cx={CX} cy={CY} r={CENTER_R}
           fill="none"
-          stroke="rgba(30,100,200,0.35)"
+          stroke={svgTheme.centerBorder}
           strokeWidth="1.5"
           style={{ pointerEvents: "none" }}
         />
@@ -416,7 +453,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
           cy={CY}
           r={OUTER_R}
           fill="none"
-          stroke="rgba(120,160,255,0.06)"
+          stroke={svgTheme.outerTrack}
           strokeWidth="28"
           style={{ pointerEvents: "none" }}
         />
@@ -445,7 +482,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
             <path
               key={sector.catKey}
               d={path}
-              fill={sector.color}
+              fill={sectorColor(sector)}
               fillOpacity={isActive ? 0.12 : 0.025}
               style={{ cursor: "pointer", transition: "fill-opacity 0.2s" }}
               onClick={(e) => handleOuterSectorClick(e, sector)}
@@ -464,7 +501,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
               y1={inner.y}
               x2={outer.x}
               y2={outer.y}
-              stroke={sector.color}
+              stroke={sectorColor(sector)}
               strokeWidth="1.5"
               strokeOpacity="0.55"
               style={{ pointerEvents: "none" }}
@@ -497,7 +534,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
                 cx={polarToXY(labelAngle, OUTER_R + 22).x}
                 cy={polarToXY(labelAngle, OUTER_R + 22).y}
                 r="3.5"
-                fill={sector.color}
+                fill={sectorColor(sector)}
                 fillOpacity={isActive ? 1 : 0.25}
                 filter="url(#glow-soft)"
               />
@@ -509,7 +546,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
                 dominantBaseline="middle"
                 fontSize="10.5"
                 fontWeight="700"
-                fill={isActive ? sector.color : "#444"}
+                fill={isActive ? sectorColor(sector) : svgTheme.inactiveLabel}
                 fontFamily="Inter, system-ui, sans-serif"
                 letterSpacing="0.02em"
                 opacity={isActive ? 1 : 0.4}
@@ -525,7 +562,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
                   dominantBaseline="middle"
                   fontSize="10.5"
                   fontWeight="700"
-                  fill={isActive ? sector.color : "#444"}
+                  fill={isActive ? sectorColor(sector) : svgTheme.inactiveLabel}
                   fontFamily="Inter, system-ui, sans-serif"
                   letterSpacing="0.02em"
                   opacity={isActive ? 1 : 0.4}
@@ -544,7 +581,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fontSize="9"
-                    fill={sector.color}
+                    fill={sectorColor(sector)}
                     fillOpacity={isActive ? 0.55 : 0.18}
                     fontFamily="Inter, system-ui, sans-serif"
                     fontWeight="600"
@@ -563,7 +600,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
         {placed.map((p) => {
           const isActive = activeCategories.has(p.category);
           const isHovered = hoveredId === p.id;
-          const color = getCategoryColor(p.category);
+          const color = catColor(p.category);
           return (
             <line
               key={`conn-${p.id}`}
@@ -589,7 +626,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
             highlightBucket !== null &&
             highlightBucket.catIdx === p.sectorIndex &&
             highlightBucket.ring === p.ring;
-          const color = getCategoryColor(p.category);
+          const color = catColor(p.category);
           const isCancelled = p.stage === "Cancelado";
           const dotRadius = isHovered ? DOT_R + 2 : DOT_R;
           const opacity = isActive ? (isCancelled ? 0.35 : 1) : 0.07;
@@ -610,9 +647,9 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
                 cx={p.px}
                 cy={p.py}
                 r={dotRadius}
-                fill={isCancelled ? "#555" : color}
+                fill={isCancelled ? svgTheme.cancelledDot : color}
                 fillOpacity={opacity}
-                stroke={isCancelled ? "#666" : color}
+                stroke={isCancelled ? svgTheme.cancelledStroke : color}
                 strokeWidth={isHovered ? 2 : 1.5}
                 strokeOpacity={isActive ? 1 : 0.12}
                 filter={
@@ -637,7 +674,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
         {placed.map((p) => {
           const isActive = activeCategories.has(p.category);
           const isHovered = hoveredId === p.id;
-          const color = getCategoryColor(p.category);
+          const color = catColor(p.category);
           const isCancelled = p.stage === "Cancelado";
           return (
             <circle
@@ -645,7 +682,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
               cx={p.outerX}
               cy={p.outerY}
               r={isHovered ? 5 : 4}
-              fill={isCancelled ? "#555" : color}
+              fill={isCancelled ? svgTheme.cancelledDot : color}
               fillOpacity={isActive ? (isCancelled ? 0.3 : 0.85) : 0.08}
               stroke={color}
               strokeWidth={isHovered ? 2 : 0}
@@ -664,7 +701,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
         {tooltip && (() => {
           const toX = Math.min(tooltip.svgX + 16, RADAR_SIZE - 260);
           const toY = Math.min(Math.max(10, tooltip.svgY - 10), RADAR_SIZE - 90);
-          const color = getCategoryColor(tooltip.project.category);
+          const color = catColor(tooltip.project.category);
           return (
             <g style={{ pointerEvents: "none" }}>
               <foreignObject x={toX} y={toY} width="250" height="90">

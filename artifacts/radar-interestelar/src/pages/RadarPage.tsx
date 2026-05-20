@@ -220,6 +220,7 @@ type PanelMode =
   | { kind: "bucket"; ps: PlacedProject[]; catIdx: number; ring: number };
 
 export function RadarPage() {
+  const [isDark, setIsDark] = useState(true);
   const [activeCategories, setActiveCategories] = useState<Set<Category>>(
     new Set(ACTIVE_CATEGORIES.map((c) => c.key))
   );
@@ -273,9 +274,16 @@ export function RadarPage() {
   return (
     <div
       className="min-h-screen flex flex-col"
-      style={{ background: "radial-gradient(ellipse at 50% -10%, hsl(220 70% 7%) 0%, hsl(220 70% 3%) 60%)" }}
+      style={{
+        background: isDark
+          ? "radial-gradient(ellipse at 50% -10%, hsl(220 70% 7%) 0%, hsl(220 70% 3%) 60%)"
+          : "radial-gradient(ellipse at 50% -10%, hsl(220 60% 93%) 0%, hsl(220 40% 97%) 60%)",
+      }}
     >
-      <header className="flex items-center justify-between px-6 py-4 border-b border-white/6">
+      <header
+        className="flex items-center justify-between px-6 py-4 border-b"
+        style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)" }}
+      >
         <div className="flex items-center gap-3">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center"
@@ -301,7 +309,10 @@ export function RadarPage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar: categories */}
-        <aside className="w-52 shrink-0 flex flex-col gap-1 p-4 border-r border-white/6 overflow-y-auto">
+        <aside
+          className="w-52 shrink-0 flex flex-col gap-1 p-4 overflow-y-auto border-r"
+          style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)" }}
+        >
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2 px-1">
             Categorias
           </div>
@@ -381,10 +392,47 @@ export function RadarPage() {
               })}
           </div>
 
-          {/* Hint */}
-          <div className="mt-auto pt-4 px-1">
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Clique em um <strong className="text-slate-500">ponto</strong> ou em qualquer <strong className="text-slate-500">área do radar</strong> para ver os projetos daquele setor.
+          {/* Theme toggle */}
+          <div className="mt-auto pt-4 px-1 flex flex-col gap-3">
+            <button
+              onClick={() => setIsDark(d => !d)}
+              className="relative flex items-center w-full h-9 rounded-full transition-all duration-300 select-none"
+              style={{
+                background: isDark ? "hsl(220,60%,12%)" : "hsl(220,40%,88%)",
+                border: `1.5px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,60,180,0.18)"}`,
+              }}
+              title={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"}
+            >
+              {/* Sun icon (left) */}
+              <span className="absolute left-2.5 flex items-center justify-center w-5 h-5 pointer-events-none" style={{ opacity: isDark ? 0.35 : 1 }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <circle cx="7" cy="7" r="3" stroke={isDark ? "#aac" : "#0055BB"} strokeWidth="1.5"/>
+                  {[0,45,90,135,180,225,270,315].map(a => {
+                    const rad = a * Math.PI / 180;
+                    return <line key={a} x1={7+Math.cos(rad)*4.2} y1={7+Math.sin(rad)*4.2} x2={7+Math.cos(rad)*5.5} y2={7+Math.sin(rad)*5.5} stroke={isDark ? "#aac" : "#0055BB"} strokeWidth="1.4" strokeLinecap="round"/>;
+                  })}
+                </svg>
+              </span>
+              {/* Sliding circle */}
+              <span
+                className="absolute w-6 h-6 rounded-full transition-all duration-300 shadow-md"
+                style={{
+                  left: isDark ? "calc(100% - 1.75rem)" : "0.25rem",
+                  background: isDark ? "hsl(220,70%,18%)" : "#FFFFFF",
+                  border: `1.5px solid ${isDark ? "rgba(100,160,255,0.4)" : "rgba(0,60,180,0.25)"}`,
+                }}
+              />
+              {/* Moon icon (right) */}
+              <span className="absolute right-2.5 flex items-center justify-center w-5 h-5 pointer-events-none" style={{ opacity: isDark ? 1 : 0.35 }}>
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                  <path d="M10.5 7.5A5 5 0 0 1 5.5 2.5a5 5 0 1 0 5 5Z" fill={isDark ? "#7ec5e8" : "#888"} />
+                  <circle cx="9" cy="3.5" r="0.6" fill={isDark ? "#fff" : "#aaa"}/>
+                  <circle cx="10.5" cy="5" r="0.4" fill={isDark ? "#fff" : "#aaa"}/>
+                </svg>
+              </span>
+            </button>
+            <p className="text-xs leading-relaxed" style={{ color: isDark ? "rgba(100,120,160,0.7)" : "rgba(0,40,100,0.4)" }}>
+              Clique em um <strong style={{ color: isDark ? "rgba(140,160,200,0.8)" : "rgba(0,40,100,0.6)" }}>ponto</strong> ou em qualquer <strong style={{ color: isDark ? "rgba(140,160,200,0.8)" : "rgba(0,40,100,0.6)" }}>área do radar</strong> para ver os projetos daquele setor.
             </p>
           </div>
         </aside>
@@ -396,12 +444,16 @@ export function RadarPage() {
               activeCategories={activeCategories}
               onProjectClick={handleProjectClick}
               onBucketClick={handleBucketClick}
+              isDark={isDark}
             />
           </div>
 
           {/* Right panel */}
           {showPanel && (
-            <aside className="w-72 shrink-0 border-l border-white/6 p-4 overflow-y-auto glass-panel">
+            <aside
+              className="w-72 shrink-0 p-4 overflow-y-auto glass-panel border-l"
+              style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)" }}
+            >
               {panel.kind === "project" && (
                 <ProjectPanel
                   project={panel.project}

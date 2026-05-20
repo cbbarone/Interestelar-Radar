@@ -33,14 +33,14 @@ export interface Project {
   link: string;
 }
 
-export const CATEGORIES: { key: Category; label: string; color: string; bgColor: string }[] = [
-  { key: "Novos_negócios",      label: "Novos Negócios",       color: "#FFFFFF", bgColor: "rgba(255,255,255,0.10)" },
-  { key: "Inovação_Corporativa",label: "Inovação Corporativa", color: "#0066CC", bgColor: "rgba(0,102,204,0.15)"   },
-  { key: "Centralidade_Cliente",label: "Centralidade Cliente", color: "#00C5E8", bgColor: "rgba(0,197,232,0.15)"   },
-  { key: "Força_tarefa",        label: "Força Tarefa",         color: "#1A3A8C", bgColor: "rgba(26,58,140,0.15)"   },
-  { key: "Estratégia",          label: "Estratégia",           color: "#7EC5E8", bgColor: "rgba(126,197,232,0.15)" },
-  { key: "Meta_Gerencial",      label: "Meta Gerencial",       color: "#1B52A0", bgColor: "rgba(27,82,160,0.15)"   },
-  { key: "Meta_Institucional",  label: "Meta Institucional",   color: "#4A8FC0", bgColor: "rgba(74,143,192,0.15)"  },
+export const CATEGORIES: { key: Category; label: string; color: string; lightColor: string; bgColor: string }[] = [
+  { key: "Novos_negócios",      label: "Novos Negócios",       color: "#FFFFFF", lightColor: "#0D2E6E", bgColor: "rgba(255,255,255,0.10)" },
+  { key: "Inovação_Corporativa",label: "Inovação Corporativa", color: "#0066CC", lightColor: "#0055BB", bgColor: "rgba(0,102,204,0.15)"   },
+  { key: "Centralidade_Cliente",label: "Centralidade Cliente", color: "#00C5E8", lightColor: "#007FA8", bgColor: "rgba(0,197,232,0.15)"   },
+  { key: "Força_tarefa",        label: "Força Tarefa",         color: "#1A3A8C", lightColor: "#1A3A8C", bgColor: "rgba(26,58,140,0.15)"   },
+  { key: "Estratégia",          label: "Estratégia",           color: "#7EC5E8", lightColor: "#4A8EC0", bgColor: "rgba(126,197,232,0.15)" },
+  { key: "Meta_Gerencial",      label: "Meta Gerencial",       color: "#1B52A0", lightColor: "#1B52A0", bgColor: "rgba(27,82,160,0.15)"   },
+  { key: "Meta_Institucional",  label: "Meta Institucional",   color: "#4A8FC0", lightColor: "#2D70A0", bgColor: "rgba(74,143,192,0.15)"  },
 ];
 
 export const STAGES: { key: Stage; label: string; ring: number }[] = [

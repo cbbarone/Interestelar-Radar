@@ -110,7 +110,9 @@ function placeProjects(outerSectors: OuterSector[]): PlacedProject[] {
   const outerMap = new Map<string, { outerX: number; outerY: number; outerAngle: number }>();
 
   for (const sector of outerSectors) {
-    const sectorProjects = visibleProjects.filter((p) => p.category === sector.catKey);
+    const sectorProjects = visibleProjects
+      .filter((p) => p.category === sector.catKey)
+      .sort((a, b) => getStageRing(b.stage) - getStageRing(a.stage)); // outermost ring first → innermost last
     const n = sectorProjects.length;
     const span = sector.endAngle - sector.startAngle;
 

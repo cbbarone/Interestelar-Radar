@@ -297,8 +297,8 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
             </feMerge>
           </filter>
           <radialGradient id="bg-gradient" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="hsl(220,60%,10%)" stopOpacity="1" />
-            <stop offset="100%" stopColor="hsl(225,39%,4%)" stopOpacity="1" />
+            <stop offset="0%" stopColor="hsl(220,70%,9%)" stopOpacity="1" />
+            <stop offset="100%" stopColor="hsl(220,70%,3%)" stopOpacity="1" />
           </radialGradient>
           <clipPath id="radar-clip">
             <circle cx={CX} cy={CY} r={MAX_R + 4} />
@@ -306,7 +306,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
         </defs>
 
         {/* Dark background covering entire SVG */}
-        <rect x="0" y="0" width={RADAR_SIZE} height={RADAR_SIZE} fill="hsl(225,39%,3%)" />
+        <rect x="0" y="0" width={RADAR_SIZE} height={RADAR_SIZE} fill="hsl(220,70%,2%)" />
 
         {/* Inner radar background */}
         <circle cx={CX} cy={CY} r={MAX_R + 4} fill="url(#bg-gradient)" />
@@ -338,7 +338,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
             cy={CY}
             r={ringRadius(i)}
             fill="none"
-            stroke="rgba(120,160,255,0.12)"
+            stroke="rgba(30,100,200,0.20)"
             strokeWidth={1}
             strokeDasharray={i === NUM_RINGS - 1 ? "6 4" : undefined}
             style={{ pointerEvents: "none" }}
@@ -356,7 +356,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
               y1={inner.y}
               x2={outer.x}
               y2={outer.y}
-              stroke="rgba(120,160,255,0.18)"
+              stroke="rgba(30,100,200,0.22)"
               strokeWidth="1"
               style={{ pointerEvents: "none" }}
             />
@@ -374,7 +374,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
               x={x}
               y={y}
               fontSize="9"
-              fill="rgba(120,160,255,0.38)"
+              fill="rgba(80,160,230,0.45)"
               fontFamily="Inter, system-ui, sans-serif"
               textAnchor="middle"
               dominantBaseline="middle"
@@ -387,12 +387,12 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
 
         {/* ── Central logo ring ── */}
         {/* Solid dark fill so logo sits on clean background */}
-        <circle cx={CX} cy={CY} r={CENTER_R} fill="hsl(225,39%,4%)" style={{ pointerEvents: "none" }} />
+        <circle cx={CX} cy={CY} r={CENTER_R} fill="hsl(220,70%,5%)" style={{ pointerEvents: "none" }} />
         {/* Subtle border ring */}
         <circle
           cx={CX} cy={CY} r={CENTER_R}
           fill="none"
-          stroke="rgba(120,160,255,0.22)"
+          stroke="rgba(30,100,200,0.35)"
           strokeWidth="1.5"
           style={{ pointerEvents: "none" }}
         />

@@ -273,13 +273,13 @@ export function RadarPage() {
   return (
     <div
       className="min-h-screen flex flex-col"
-      style={{ background: "radial-gradient(ellipse at 50% -10%, hsl(220 60% 8%) 0%, hsl(225 39% 4%) 60%)" }}
+      style={{ background: "radial-gradient(ellipse at 50% -10%, hsl(220 70% 7%) 0%, hsl(220 70% 3%) 60%)" }}
     >
       <header className="flex items-center justify-between px-6 py-4 border-b border-white/6">
         <div className="flex items-center gap-3">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, hsl(220,80%,40%), hsl(240,70%,50%))" }}
+            style={{ background: "linear-gradient(135deg, hsl(215,75%,30%), hsl(215,80%,45%))" }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <circle cx="8" cy="8" r="7" stroke="white" strokeWidth="1.5" />

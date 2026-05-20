@@ -16,7 +16,7 @@ const RADAR_SIZE = 1100;
 const CX = RADAR_SIZE / 2;         // 550
 const CY = RADAR_SIZE / 2;         // 550
 const CENTER_R = 90;               // central logo ring — no projects enter here
-const MIN_R = 108;
+const MIN_R = 145;                 // = (MAX_R + CENTER_R*(NUM_RINGS-1)) / NUM_RINGS → equal band width for all rings
 const MAX_R = 420;
 const RING_STEP = (MAX_R - MIN_R) / (NUM_RINGS - 1);
 const DOT_R = 5;

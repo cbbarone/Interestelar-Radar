@@ -137,7 +137,7 @@ function placeProjects(outerSectors: OuterSector[]): PlacedProject[] {
     const ring = getStageRing(p.stage);
     const catIdx = ACTIVE_CATEGORIES.findIndex((c) => c.key === p.category);
 
-    const bandInner = ring === 0 ? MIN_R * 0.25 : ringRadius(ring - 1) + DOT_R + 3;
+    const bandInner = ring === 0 ? CENTER_R + DOT_R + 3 : ringRadius(ring - 1) + DOT_R + 3;
     const bandOuter = ringRadius(ring) - DOT_R - 3;
     const midR = (bandInner + bandOuter) / 2;
 
@@ -657,25 +657,6 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick }: 
           );
         })}
 
-        {/* Center glow */}
-        <circle
-          cx={CX}
-          cy={CY}
-          r="16"
-          fill="hsl(220,80%,40%)"
-          fillOpacity="0.3"
-          stroke="hsl(220,80%,60%)"
-          strokeWidth="1.5"
-          style={{ pointerEvents: "none" }}
-        />
-        <circle
-          cx={CX}
-          cy={CY}
-          r="6"
-          fill="hsl(220,80%,70%)"
-          filter="url(#glow-strong)"
-          style={{ pointerEvents: "none" }}
-        />
 
         {/* Tooltip */}
         {tooltip && (() => {

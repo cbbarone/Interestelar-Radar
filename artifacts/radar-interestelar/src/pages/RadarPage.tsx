@@ -173,7 +173,7 @@ function BucketListPanel({
   );
 }
 
-function StatsBar() {
+function StatsBar({ isDark }: { isDark: boolean }) {
   const total = visibleProjects.length;
   const concluded = visibleProjects.filter(
     (p) => p.stage === "Concluído" || p.stage === "Finalizado"
@@ -192,23 +192,23 @@ function StatsBar() {
   return (
     <div className="flex flex-wrap gap-4 text-center">
       <div>
-        <div className="text-2xl font-bold text-white">{total}</div>
-        <div className="text-xs text-slate-500 mt-0.5">Total</div>
+        <div className="text-2xl font-bold" style={{ color: isDark ? "white" : "#0D2060" }}>{total}</div>
+        <div className="text-xs mt-0.5" style={{ color: isDark ? "rgb(100,116,139)" : "rgb(55,65,81)" }}>Total</div>
       </div>
-      <div className="w-px bg-white/8" />
+      <div className="w-px" style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.12)" }} />
       <div>
         <div className="text-2xl font-bold text-emerald-400">{concluded}</div>
-        <div className="text-xs text-slate-500 mt-0.5">Concluídos</div>
+        <div className="text-xs mt-0.5" style={{ color: isDark ? "rgb(100,116,139)" : "rgb(55,65,81)" }}>Concluídos</div>
       </div>
-      <div className="w-px bg-white/8" />
+      <div className="w-px" style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.12)" }} />
       <div>
         <div className="text-2xl font-bold text-sky-400">{inProgress}</div>
-        <div className="text-xs text-slate-500 mt-0.5">Em andamento</div>
+        <div className="text-xs mt-0.5" style={{ color: isDark ? "rgb(100,116,139)" : "rgb(55,65,81)" }}>Em andamento</div>
       </div>
-      <div className="w-px bg-white/8" />
+      <div className="w-px" style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.12)" }} />
       <div>
         <div className="text-2xl font-bold text-amber-400">{gearingUp}</div>
-        <div className="text-xs text-slate-500 mt-0.5">Em ideação</div>
+        <div className="text-xs mt-0.5" style={{ color: isDark ? "rgb(100,116,139)" : "rgb(55,65,81)" }}>Em ideação</div>
       </div>
     </div>
   );
@@ -300,11 +300,11 @@ export function RadarPage() {
             </svg>
           </div>
           <div>
-            <h1 className="text-sm font-bold text-white tracking-wide">RADAR INTERESTELAR</h1>
-            <p className="text-xs text-slate-500">CCEE · Gerência de Inovação</p>
+            <h1 className="text-sm font-bold tracking-wide" style={{ color: isDark ? "white" : "#0D2060" }}>RADAR INTERESTELAR</h1>
+            <p className="text-xs" style={{ color: isDark ? "rgb(100,116,139)" : "rgb(37,99,235)" }}>CCEE · Gerência de Inovação</p>
           </div>
         </div>
-        <StatsBar />
+        <StatsBar isDark={isDark} />
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -313,27 +313,27 @@ export function RadarPage() {
           className="w-52 shrink-0 flex flex-col gap-1 p-4 overflow-y-auto border-r"
           style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)" }}
         >
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2 px-1">
+          <div className="text-xs font-semibold uppercase tracking-widest mb-2 px-1" style={{ color: isDark ? "rgb(100,116,139)" : "#1e3a8a" }}>
             Categorias
           </div>
           <button
             onClick={toggleAll}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all hover:bg-white/6"
-            style={{ color: activeCategories.size === ACTIVE_CATEGORIES.length ? "white" : "#6b7280" }}
+            style={{ color: activeCategories.size === ACTIVE_CATEGORIES.length ? (isDark ? "white" : "#0D2060") : (isDark ? "#6b7280" : "#4b5563") }}
           >
             <span
               className="w-3 h-3 rounded-sm border flex items-center justify-center"
               style={{
-                borderColor: activeCategories.size === ACTIVE_CATEGORIES.length ? "white" : "#4b5563",
+                borderColor: activeCategories.size === ACTIVE_CATEGORIES.length ? (isDark ? "white" : "#0D2060") : (isDark ? "#4b5563" : "#9ca3af"),
                 background:
                   activeCategories.size === ACTIVE_CATEGORIES.length
-                    ? "rgba(255,255,255,0.15)"
+                    ? isDark ? "rgba(255,255,255,0.15)" : "rgba(13,46,110,0.12)"
                     : "transparent",
               }}
             >
               {activeCategories.size === ACTIVE_CATEGORIES.length && (
                 <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                  <path d="M1 4L3 6L7 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M1 4L3 6L7 2" stroke={isDark ? "white" : "#0D2060"} strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
               )}
             </span>
@@ -347,29 +347,29 @@ export function RadarPage() {
                 key={cat.key}
                 onClick={() => toggleCategory(cat.key)}
                 className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs transition-all hover:bg-white/5 text-left"
-                style={{ background: isOn ? `${cat.color}10` : "transparent" }}
+                style={{ background: isOn ? `${isDark ? cat.color : cat.lightColor}18` : "transparent" }}
               >
                 <span
                   className="w-2.5 h-2.5 rounded-full shrink-0"
                   style={{
-                    background: isOn ? cat.color : "transparent",
-                    border: `2px solid ${isOn ? cat.color : "#4b5563"}`,
-                    boxShadow: isOn ? `0 0 6px ${cat.color}60` : "none",
+                    background: isOn ? (isDark ? cat.color : cat.lightColor) : "transparent",
+                    border: `2px solid ${isOn ? (isDark ? cat.color : cat.lightColor) : (isDark ? "#4b5563" : "#9ca3af")}`,
+                    boxShadow: isOn ? `0 0 6px ${isDark ? cat.color : cat.lightColor}60` : "none",
                   }}
                 />
                 <span
                   className="flex-1 leading-tight font-medium"
-                  style={{ color: isOn ? "rgba(255,255,255,0.9)" : "#6b7280" }}
+                  style={{ color: isOn ? (isDark ? "rgba(255,255,255,0.9)" : "#0D2060") : (isDark ? "#6b7280" : "#4b5563") }}
                 >
                   {cat.label}
                 </span>
-                <span className="text-slate-600 font-mono">{count}</span>
+                <span style={{ color: isDark ? "rgb(71,85,105)" : "rgb(75,85,99)" }} className="font-mono">{count}</span>
               </button>
             );
           })}
 
-          <div className="mt-4 pt-4 border-t border-white/6">
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3 px-1">
+          <div className="mt-4 pt-4 border-t" style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)" }}>
+            <div className="text-xs font-semibold uppercase tracking-widest mb-3 px-1" style={{ color: isDark ? "rgb(100,116,139)" : "#1e3a8a" }}>
               Anéis (Etapa)
             </div>
             {STAGES.filter((s, i, arr) => arr.findIndex((x) => x.ring === s.ring) === i && s.ring < 6)
@@ -381,7 +381,7 @@ export function RadarPage() {
                 ];
                 const c = ringColors[s.ring];
                 return (
-                  <div key={s.ring} className="flex items-center gap-2 px-3 py-1.5 text-xs text-slate-400">
+                  <div key={s.ring} className="flex items-center gap-2 px-3 py-1.5 text-xs" style={{ color: isDark ? "rgb(148,163,184)" : "rgb(30,58,138)" }}>
                     <span
                       className="w-2 h-2 rounded-full shrink-0"
                       style={{ background: c, boxShadow: `0 0 4px ${c}80` }}

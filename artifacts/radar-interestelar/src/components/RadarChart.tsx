@@ -1,13 +1,14 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import cceeLogo from "@assets/ccee_gein_nobg.png";
 import {
-  visibleProjects,
-  ACTIVE_CATEGORIES,
+  CATEGORIES,
   STAGES,
   getStageRing,
   type Project,
   type Category,
 } from "@/data/projects";
+
+type CategoryDef = typeof CATEGORIES[number];
 
 // ─── Inner radar constants ───────────────────────────────────────────────────
 const NUM_RINGS = 6; // only rings 0–5 after filtering
@@ -26,8 +27,6 @@ const ANG_MARGIN_FRAC = 0.07;
 const OUTER_R = 490;               // radius of the outer dot ring
 const OUTER_TICK_R = OUTER_R + 18; // label placement radius
 const START_OFFSET = -Math.PI / 2;
-const NUM_CATEGORIES = ACTIVE_CATEGORIES.length;
-const SECTOR_ANGLE = (2 * Math.PI) / NUM_CATEGORIES;
 
 function ringRadius(ring: number): number {
   return MIN_R + ring * RING_STEP;
@@ -71,13 +70,13 @@ interface OuterSector {
   count: number;
 }
 
-function computeOuterSectors(): OuterSector[] {
-  const total = visibleProjects.length;
+function computeOuterSectors(vp: Project[], cats: CategoryDef[]): OuterSector[] {
+  const total = vp.length;
   const sectors: OuterSector[] = [];
   let cursor = START_OFFSET;
 
-  for (const cat of ACTIVE_CATEGORIES) {
-    const count = visibleProjects.filter((p) => p.category === cat.key).length;
+  for (const cat of cats) {
+    const count = vp.filter((p) => p.category === cat.key).length;
     const span = (count / total) * 2 * Math.PI;
     sectors.push({
       catKey: cat.key,
@@ -103,13 +102,13 @@ export interface PlacedProject extends Project {
   outerAngle: number;
 }
 
-function placeProjects(outerSectors: OuterSector[]): PlacedProject[] {
+function placeProjects(outerSectors: OuterSector[], vp: Project[], cats: CategoryDef[]): PlacedProject[] {
   // ── Step 1: Outer ring — evenly spaced within each proportional sector ────
   // Assigns each project a unique angle so outer dots never overlap.
   const outerMap = new Map<string, { outerX: number; outerY: number; outerAngle: number }>();
 
   for (const sector of outerSectors) {
-    const sectorProjects = visibleProjects
+    const sectorProjects = vp
       .filter((p) => p.category === sector.catKey)
       .sort((a, b) => getStageRing(b.stage) - getStageRing(a.stage)); // outermost ring first → innermost last
     const n = sectorProjects.length;
@@ -132,11 +131,11 @@ function placeProjects(outerSectors: OuterSector[]): PlacedProject[] {
   // angles, inner dots also have unique angles → no inner-to-inner overlaps.
   const innerMap = new Map<string, { px: number; py: number; ring: number; sectorIndex: number }>();
 
-  for (const p of visibleProjects) {
+  for (const p of vp) {
     const outer = outerMap.get(p.id);
     if (!outer) continue;
     const ring = getStageRing(p.stage);
-    const catIdx = ACTIVE_CATEGORIES.findIndex((c) => c.key === p.category);
+    const catIdx = cats.findIndex((c) => c.key === p.category);
 
     const bandInner = ring === 0 ? CENTER_R + DOT_R + 3 : ringRadius(ring - 1) + DOT_R + 3;
     const bandOuter = ringRadius(ring) - DOT_R - 3;
@@ -148,7 +147,7 @@ function placeProjects(outerSectors: OuterSector[]): PlacedProject[] {
 
   // ── Combine ──────────────────────────────────────────────────────────────
   const placed: PlacedProject[] = [];
-  for (const p of visibleProjects) {
+  for (const p of vp) {
     const inner = innerMap.get(p.id);
     const outer = outerMap.get(p.id);
     if (!inner || !outer) continue;
@@ -180,13 +179,15 @@ interface BucketKey {
 }
 
 interface Props {
+  visibleProjects: Project[];
+  allCategories: CategoryDef[];
   activeCategories: Set<Category>;
   onProjectClick: (p: PlacedProject) => void;
   onBucketClick: (ps: PlacedProject[], catIdx: number, ring: number) => void;
   isDark: boolean;
 }
 
-export function RadarChart({ activeCategories, onProjectClick, onBucketClick, isDark }: Props) {
+export function RadarChart({ visibleProjects, allCategories, activeCategories, onProjectClick, onBucketClick, isDark }: Props) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [highlightBucket, setHighlightBucket] = useState<BucketKey | null>(null);
@@ -221,7 +222,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick, is
   };
 
   const catColor = (category: Category): string => {
-    const cat = ACTIVE_CATEGORIES.find(c => c.key === category);
+    const cat = allCategories.find(c => c.key === category);
     if (!cat) return isDark ? "#888" : "#555";
     return isDark ? cat.color : (cat.lightColor ?? cat.color);
   };
@@ -229,8 +230,8 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick, is
   const sectorColor = (sector: { catKey: string }): string =>
     catColor(sector.catKey as Category);
 
-  const outerSectors = useMemo(() => computeOuterSectors(), []);
-  const placed = useMemo(() => placeProjects(outerSectors), [outerSectors]);
+  const outerSectors = useMemo(() => computeOuterSectors(visibleProjects, allCategories), [visibleProjects, allCategories]);
+  const placed = useMemo(() => placeProjects(outerSectors, visibleProjects, allCategories), [outerSectors, visibleProjects, allCategories]);
 
   const bucketMap = useMemo(() => {
     const map = new Map<string, PlacedProject[]>();
@@ -301,7 +302,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick, is
   const handleOuterSectorClick = useCallback(
     (e: React.MouseEvent, sector: OuterSector) => {
       e.stopPropagation();
-      const catIdx = ACTIVE_CATEGORIES.findIndex((c) => c.key === sector.catKey);
+      const catIdx = allCategories.findIndex((c) => c.key === sector.catKey);
       const catProjects = placed.filter((p) => p.category === sector.catKey);
       if (catProjects.length > 0) {
         onBucketClick(catProjects, catIdx, -1);
@@ -350,7 +351,7 @@ export function RadarChart({ activeCategories, onProjectClick, onBucketClick, is
 
         {/* ── Inner sector fills (same proportional angles as outer ring) ── */}
         {outerSectors.map((sector, i) => {
-          const cat = ACTIVE_CATEGORIES[i];
+          const cat = allCategories[i];
           const isActive = activeCategories.has(cat.key);
           const isHighlighted =
             highlightBucket !== null && highlightBucket.catIdx === i;

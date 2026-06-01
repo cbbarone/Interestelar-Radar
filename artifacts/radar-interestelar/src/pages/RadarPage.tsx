@@ -1,6 +1,29 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { RadarChart, type PlacedProject } from "@/components/RadarChart";
-import { ACTIVE_CATEGORIES, STAGES, visibleProjects, getCategoryLabel, type Category } from "@/data/projects";
+import {
+  CATEGORIES,
+  STAGES,
+  projects as defaultProjects,
+  getStageRing,
+  getCategoryLabel,
+  type Category,
+  type Project,
+} from "@/data/projects";
+import { parseExcelProjects } from "@/lib/parseExcel";
+
+const IGNORED_RINGS = new Set([6, 7]);
+
+function useProjectData(allProjects: Project[]) {
+  return useMemo(() => {
+    const visible = allProjects.filter(
+      (p) => !IGNORED_RINGS.has(getStageRing(p.stage))
+    );
+    const activeCategories = CATEGORIES.filter((cat) =>
+      visible.some((p) => p.category === cat.key)
+    );
+    return { visibleProjects: visible, activeCategories };
+  }, [allProjects]);
+}
 
 function StagesBadge({ stage }: { stage: string }) {
   const stageInfo = STAGES.find((s) => s.key === stage);
@@ -24,12 +47,15 @@ function ProjectPanel({
   project,
   onClose,
   onBack,
+  isDark,
 }: {
   project: PlacedProject;
   onClose: () => void;
   onBack?: () => void;
+  isDark: boolean;
 }) {
-  const { color } = ACTIVE_CATEGORIES.find((c) => c.key === project.category) ?? { color: "#888" };
+  const catDef = CATEGORIES.find((c) => c.key === project.category);
+  const color = isDark ? (catDef?.color ?? "#888") : (catDef?.lightColor ?? catDef?.color ?? "#888");
 
   return (
     <div className="fade-in-up flex flex-col h-full">
@@ -101,14 +127,16 @@ function BucketListPanel({
   ring,
   onSelectProject,
   onClose,
+  allCategories,
 }: {
   bucketProjects: PlacedProject[];
   catIdx: number;
   ring: number;
   onSelectProject: (p: PlacedProject) => void;
   onClose: () => void;
+  allCategories: ReturnType<typeof useProjectData>["activeCategories"];
 }) {
-  const cat = ACTIVE_CATEGORIES[catIdx];
+  const cat = allCategories[catIdx];
   const ringColors = [
     "#34D399", "#10B981", "#38BDF8", "#818CF8", "#F59E0B", "#A78BFA", "#FB7185", "#9CA3AF",
   ];
@@ -173,7 +201,52 @@ function BucketListPanel({
   );
 }
 
-function StatsBar({ isDark }: { isDark: boolean }) {
+function ImportToast({
+  message,
+  type,
+  isDark,
+  onClose,
+}: {
+  message: string;
+  type: "success" | "error";
+  isDark: boolean;
+  onClose: () => void;
+}) {
+  const bg = type === "success"
+    ? isDark ? "rgba(5,46,22,0.95)" : "rgba(220,252,231,0.98)"
+    : isDark ? "rgba(69,10,10,0.95)" : "rgba(254,226,226,0.98)";
+  const border = type === "success" ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)";
+  const textColor = type === "success"
+    ? isDark ? "#4ade80" : "#15803d"
+    : isDark ? "#f87171" : "#b91c1c";
+
+  return (
+    <div
+      className="fixed bottom-5 right-5 z-50 flex items-start gap-3 px-4 py-3 rounded-xl shadow-xl max-w-sm"
+      style={{ background: bg, border: `1px solid ${border}` }}
+    >
+      <span className="text-base mt-0.5" style={{ color: textColor }}>{type === "success" ? "✓" : "✕"}</span>
+      <p className="text-xs leading-relaxed flex-1" style={{ color: textColor }}>{message}</p>
+      <button
+        onClick={onClose}
+        className="shrink-0 text-xs opacity-50 hover:opacity-100 transition-opacity"
+        style={{ color: textColor }}
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
+function StatsBar({
+  isDark,
+  visibleProjects,
+  onImportClick,
+}: {
+  isDark: boolean;
+  visibleProjects: Project[];
+  onImportClick: () => void;
+}) {
   const total = visibleProjects.length;
   const concluded = visibleProjects.filter(
     (p) => p.stage === "Concluído" || p.stage === "Finalizado"
@@ -186,14 +259,35 @@ function StatsBar({ isDark }: { isDark: boolean }) {
       p.stage === "Em progresso"
   ).length;
   const gearingUp = visibleProjects.filter(
-    (p) => p.stage === "Gerar ideias" || p.stage === "Em definição do produto/estratégia" || p.stage === "Em aprofundamento"
+    (p) =>
+      p.stage === "Gerar ideias" ||
+      p.stage === "Em definição do produto/estratégia" ||
+      p.stage === "Em aprofundamento"
   ).length;
 
   return (
-    <div className="flex flex-wrap gap-4 text-center">
-      <div>
-        <div className="text-2xl font-bold" style={{ color: isDark ? "white" : "#0D2060" }}>{total}</div>
-        <div className="text-xs mt-0.5" style={{ color: isDark ? "rgb(100,116,139)" : "rgb(55,65,81)" }}>Total</div>
+    <div className="flex flex-wrap items-center gap-4 text-center">
+      <div className="flex items-center gap-2">
+        <div>
+          <div className="text-2xl font-bold" style={{ color: isDark ? "white" : "#0D2060" }}>{total}</div>
+          <div className="text-xs mt-0.5" style={{ color: isDark ? "rgb(100,116,139)" : "rgb(55,65,81)" }}>Total</div>
+        </div>
+        <button
+          onClick={onImportClick}
+          title="Importar projetos de arquivo Excel (.xlsx)"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105 active:scale-95 select-none"
+          style={{
+            background: isDark ? "rgba(30,80,200,0.15)" : "rgba(13,46,110,0.08)",
+            border: `1px solid ${isDark ? "rgba(80,140,255,0.25)" : "rgba(13,46,110,0.18)"}`,
+            color: isDark ? "rgba(140,180,255,0.85)" : "#1e3a8a",
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path d="M6.5 1v7M3.5 5.5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M1.5 9.5v1a1 1 0 001 1h9a1 1 0 001-1v-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          Excel
+        </button>
       </div>
       <div className="w-px" style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.12)" }} />
       <div>
@@ -219,12 +313,20 @@ type PanelMode =
   | { kind: "project"; project: PlacedProject; fromBucket?: { ps: PlacedProject[]; catIdx: number; ring: number } }
   | { kind: "bucket"; ps: PlacedProject[]; catIdx: number; ring: number };
 
+type Toast = { message: string; type: "success" | "error" } | null;
+
 export function RadarPage() {
   const [isDark, setIsDark] = useState(true);
-  const [activeCategories, setActiveCategories] = useState<Set<Category>>(
-    new Set(ACTIVE_CATEGORIES.map((c) => c.key))
-  );
+  const [allProjects, setAllProjects] = useState<Project[]>(defaultProjects);
   const [panel, setPanel] = useState<PanelMode>({ kind: "none" });
+  const [toast, setToast] = useState<Toast>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { visibleProjects, activeCategories: activeCategoryList } = useProjectData(allProjects);
+
+  const [activeCategories, setActiveCategories] = useState<Set<Category>>(
+    () => new Set(activeCategoryList.map((c) => c.key))
+  );
 
   function toggleCategory(key: Category) {
     setActiveCategories((prev) => {
@@ -239,12 +341,65 @@ export function RadarPage() {
   }
 
   function toggleAll() {
-    if (activeCategories.size === ACTIVE_CATEGORIES.length) {
-      setActiveCategories(new Set([ACTIVE_CATEGORIES[0].key]));
+    if (activeCategories.size === activeCategoryList.length) {
+      setActiveCategories(new Set([activeCategoryList[0].key]));
     } else {
-      setActiveCategories(new Set(ACTIVE_CATEGORIES.map((c) => c.key)));
+      setActiveCategories(new Set(activeCategoryList.map((c) => c.key)));
     }
   }
+
+  const handleImportClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const buffer = ev.target?.result as ArrayBuffer;
+          const { projects, total, skipped, errors } = parseExcelProjects(buffer);
+
+          if (projects.length === 0) {
+            setToast({
+              type: "error",
+              message: `Nenhum projeto válido encontrado. ${errors.slice(0, 2).join("; ")}`,
+            });
+            return;
+          }
+
+          setAllProjects(projects);
+          setActiveCategories(
+            new Set(
+              CATEGORIES.filter((cat) =>
+                projects.some(
+                  (p) => p.category === cat.key && !IGNORED_RINGS.has(getStageRing(p.stage))
+                )
+              ).map((c) => c.key)
+            )
+          );
+          setPanel({ kind: "none" });
+
+          const msg =
+            skipped > 0
+              ? `${projects.length} projetos importados de ${total} linhas (${skipped} ignoradas).`
+              : `${projects.length} projetos importados com sucesso.`;
+          setToast({ type: "success", message: msg });
+        } catch {
+          setToast({
+            type: "error",
+            message: "Erro ao ler o arquivo. Verifique se é um .xlsx válido.",
+          });
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      e.target.value = "";
+    },
+    []
+  );
 
   function handleProjectClick(p: PlacedProject) {
     setPanel({ kind: "project", project: p });
@@ -280,6 +435,15 @@ export function RadarPage() {
           : "radial-gradient(ellipse at 50% -10%, hsl(220 60% 93%) 0%, hsl(220 40% 97%) 60%)",
       }}
     >
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
       <header
         className="flex items-center justify-between px-6 py-4 border-b"
         style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)" }}
@@ -304,11 +468,11 @@ export function RadarPage() {
             <p className="text-xs" style={{ color: isDark ? "rgb(100,116,139)" : "rgb(37,99,235)" }}>CCEE · Gerência de Inovação</p>
           </div>
         </div>
-        <StatsBar isDark={isDark} />
+        <StatsBar isDark={isDark} visibleProjects={visibleProjects} onImportClick={handleImportClick} />
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left sidebar: categories */}
+        {/* Left sidebar */}
         <aside
           className="w-52 shrink-0 flex flex-col gap-1 p-4 overflow-y-auto border-r"
           style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)" }}
@@ -319,19 +483,19 @@ export function RadarPage() {
           <button
             onClick={toggleAll}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all hover:bg-white/6"
-            style={{ color: activeCategories.size === ACTIVE_CATEGORIES.length ? (isDark ? "white" : "#0D2060") : (isDark ? "#6b7280" : "#4b5563") }}
+            style={{ color: activeCategories.size === activeCategoryList.length ? (isDark ? "white" : "#0D2060") : (isDark ? "#6b7280" : "#4b5563") }}
           >
             <span
               className="w-3 h-3 rounded-sm border flex items-center justify-center"
               style={{
-                borderColor: activeCategories.size === ACTIVE_CATEGORIES.length ? (isDark ? "white" : "#0D2060") : (isDark ? "#4b5563" : "#9ca3af"),
+                borderColor: activeCategories.size === activeCategoryList.length ? (isDark ? "white" : "#0D2060") : (isDark ? "#4b5563" : "#9ca3af"),
                 background:
-                  activeCategories.size === ACTIVE_CATEGORIES.length
+                  activeCategories.size === activeCategoryList.length
                     ? isDark ? "rgba(255,255,255,0.15)" : "rgba(13,46,110,0.12)"
                     : "transparent",
               }}
             >
-              {activeCategories.size === ACTIVE_CATEGORIES.length && (
+              {activeCategories.size === activeCategoryList.length && (
                 <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
                   <path d="M1 4L3 6L7 2" stroke={isDark ? "white" : "#0D2060"} strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
@@ -339,7 +503,7 @@ export function RadarPage() {
             </span>
             Todos
           </button>
-          {ACTIVE_CATEGORIES.map((cat) => {
+          {activeCategoryList.map((cat) => {
             const isOn = activeCategories.has(cat.key);
             const count = visibleProjects.filter((p) => p.category === cat.key).length;
             return (
@@ -375,24 +539,17 @@ export function RadarPage() {
             {STAGES.filter((s, i, arr) => arr.findIndex((x) => x.ring === s.ring) === i && s.ring < 6)
               .sort((a, b) => a.ring - b.ring)
               .map((s) => {
-                const ringColors = [
-                  "#34D399", "#10B981", "#38BDF8", "#818CF8",
-                  "#F59E0B", "#A78BFA",
-                ];
+                const ringColors = ["#34D399", "#10B981", "#38BDF8", "#818CF8", "#F59E0B", "#A78BFA"];
                 const c = ringColors[s.ring];
                 return (
                   <div key={s.ring} className="flex items-center gap-2 px-3 py-1.5 text-xs" style={{ color: isDark ? "rgb(148,163,184)" : "rgb(30,58,138)" }}>
-                    <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ background: c, boxShadow: `0 0 4px ${c}80` }}
-                    />
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c, boxShadow: `0 0 4px ${c}80` }} />
                     <span className="leading-tight">{s.label}</span>
                   </div>
                 );
               })}
           </div>
 
-          {/* Theme toggle */}
           <div className="mt-auto pt-4 px-1 flex flex-col gap-3">
             <button
               onClick={() => setIsDark(d => !d)}
@@ -403,7 +560,6 @@ export function RadarPage() {
               }}
               title={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"}
             >
-              {/* Sun icon (left) */}
               <span className="absolute left-2.5 flex items-center justify-center w-5 h-5 pointer-events-none" style={{ opacity: isDark ? 0.35 : 1 }}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <circle cx="7" cy="7" r="3" stroke={isDark ? "#aac" : "#0055BB"} strokeWidth="1.5"/>
@@ -413,7 +569,6 @@ export function RadarPage() {
                   })}
                 </svg>
               </span>
-              {/* Sliding circle */}
               <span
                 className="absolute w-6 h-6 rounded-full transition-all duration-300 shadow-md"
                 style={{
@@ -422,7 +577,6 @@ export function RadarPage() {
                   border: `1.5px solid ${isDark ? "rgba(100,160,255,0.4)" : "rgba(0,60,180,0.25)"}`,
                 }}
               />
-              {/* Moon icon (right) */}
               <span className="absolute right-2.5 flex items-center justify-center w-5 h-5 pointer-events-none" style={{ opacity: isDark ? 1 : 0.35 }}>
                 <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
                   <path d="M10.5 7.5A5 5 0 0 1 5.5 2.5a5 5 0 1 0 5 5Z" fill={isDark ? "#7ec5e8" : "#888"} />
@@ -438,9 +592,10 @@ export function RadarPage() {
         </aside>
 
         <main className="flex-1 flex overflow-hidden">
-          {/* Radar */}
           <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
             <RadarChart
+              visibleProjects={visibleProjects}
+              allCategories={activeCategoryList}
               activeCategories={activeCategories}
               onProjectClick={handleProjectClick}
               onBucketClick={handleBucketClick}
@@ -448,7 +603,6 @@ export function RadarPage() {
             />
           </div>
 
-          {/* Right panel */}
           {showPanel && (
             <aside
               className="w-72 shrink-0 p-4 overflow-y-auto glass-panel border-l"
@@ -457,6 +611,7 @@ export function RadarPage() {
               {panel.kind === "project" && (
                 <ProjectPanel
                   project={panel.project}
+                  isDark={isDark}
                   onClose={closePanel}
                   onBack={
                     panel.fromBucket
@@ -476,6 +631,7 @@ export function RadarPage() {
                   bucketProjects={panel.ps}
                   catIdx={panel.catIdx}
                   ring={panel.ring}
+                  allCategories={activeCategoryList}
                   onSelectProject={(p) =>
                     handleSelectFromBucket(p, {
                       ps: panel.ps,
@@ -490,6 +646,15 @@ export function RadarPage() {
           )}
         </main>
       </div>
+
+      {toast && (
+        <ImportToast
+          message={toast.message}
+          type={toast.type}
+          isDark={isDark}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

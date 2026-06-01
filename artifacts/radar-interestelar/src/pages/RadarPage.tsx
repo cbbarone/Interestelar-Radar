@@ -268,10 +268,6 @@ function StatsBar({
   return (
     <div className="flex flex-wrap items-center gap-4 text-center">
       <div className="flex items-center gap-2">
-        <div>
-          <div className="text-2xl font-bold" style={{ color: isDark ? "white" : "#0D2060" }}>{total}</div>
-          <div className="text-xs mt-0.5" style={{ color: isDark ? "rgb(100,116,139)" : "rgb(55,65,81)" }}>Total</div>
-        </div>
         <button
           onClick={onImportClick}
           title="Importar projetos de arquivo Excel (.xlsx)"
@@ -288,6 +284,10 @@ function StatsBar({
           </svg>
           Excel
         </button>
+        <div>
+          <div className="text-2xl font-bold" style={{ color: isDark ? "white" : "#0D2060" }}>{total}</div>
+          <div className="text-xs mt-0.5" style={{ color: isDark ? "rgb(100,116,139)" : "rgb(55,65,81)" }}>Total</div>
+        </div>
       </div>
       <div className="w-px" style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.12)" }} />
       <div>
